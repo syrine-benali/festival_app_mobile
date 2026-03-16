@@ -16,6 +16,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material.icons.filled.Star
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +37,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.ui.screen.LoginScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
+import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
+import com.example.festivalappmobile.domain.usecases.GetFestivalsUseCase
+import com.example.festivalappmobile.ui.screen.FestivalListScreen
+import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,6 +108,17 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     }
                 )
                 NavigationBarItem(
+                    icon = { Icon(Icons.Filled.Star, contentDescription = "Festivals") },
+                    label = { Text("Festivals") },
+                    selected = currentRoute == "festivals",
+                    onClick = {
+                        bottomNavController.navigate("festivals") {
+                            popUpTo(bottomNavController.graph.startDestinationId)
+                            launchSingleTop = true
+                        }
+                    }
+                )
+                NavigationBarItem(
                     icon = { Icon(Icons.Filled.Person, contentDescription = "Mon Compte") },
                     label = { Text("Mon Compte") },
                     selected = currentRoute == "profile",
@@ -126,6 +146,25 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                 ) {
                     Text("C'est ici qu'apparaîtra la liste des réservations !")
                 }
+            }
+            
+            composable("festivals") {
+                val viewModel: FestivalListViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            // Manually creating the dependencies of the viewmodel OUTSIDE of it
+                            val api = RetrofitClient.instance
+                            val repo = FestivalRepositoryImpl(api)
+                            val useCase = GetFestivalsUseCase(repo)
+
+                            // creating the view model from factory, with dependency inversion
+                            // This synatx is tedious and would be easier to read/manage with a framework like Hilt/Dagger
+                            @Suppress("UNCHECKED_CAST")
+                            return FestivalListViewModel(useCase) as T
+                        }
+                    }
+                )
+                FestivalListScreen(viewModel = viewModel)
             }
 
             composable("profile") {
