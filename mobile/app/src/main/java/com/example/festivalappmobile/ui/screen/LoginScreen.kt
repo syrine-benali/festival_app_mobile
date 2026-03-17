@@ -77,7 +77,19 @@ fun LoginScreen(
             if (uiState.isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp))
             else Text("Se connecter")
         }
-
+        // ----------------------------------------
+        // DEV ONLY: Bouton de remplissage automatique pour login
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { 
+                viewModel.onEmailChange(DevEnv.USER_EMAIL)
+                viewModel.onPasswordChange(DevEnv.PASSWORD)
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Auto-fill DEV (from DevEnv.kt)")
+        }
+        // ----------------------------------------
         if (uiState.error != null) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
