@@ -3,6 +3,7 @@ package com.example.festivalappmobile.data.remote
 import com.example.festivalappmobile.data.remote.dto.LoginRequestDto
 import com.example.festivalappmobile.data.remote.dto.LoginResponseDto
 import com.example.festivalappmobile.data.remote.dto.ReservationDto
+import com.example.festivalappmobile.data.remote.dto.FestivalDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -17,4 +18,7 @@ interface ApiService {
 
     @GET("api/reservations")
     suspend fun getReservations(): Response<List<ReservationDto>>
+
+    @GET("api/festivals")
+    suspend fun getFestivals(): Response<List<FestivalDto>>
 }
