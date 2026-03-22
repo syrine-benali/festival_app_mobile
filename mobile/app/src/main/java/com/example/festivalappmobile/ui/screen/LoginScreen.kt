@@ -13,6 +13,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +28,8 @@ import com.example.festivalappmobile.ui.viewmodels.LoginViewModel
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
-    onLoginSuccess: (User) -> Unit
+    onLoginSuccess: (User) -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -90,6 +92,15 @@ fun LoginScreen(
             Text("Auto-fill DEV (from DevEnv.kt)")
         }
         // ----------------------------------------
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(
+            onClick = onNavigateToRegister,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Pas encore de compte ? S'inscrire")
+        }
+        
         if (uiState.error != null) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(uiState.error!!, color = MaterialTheme.colorScheme.error)

@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.filled.Star
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -36,6 +37,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.ui.screen.LoginScreen
+import com.example.festivalappmobile.ui.screen.RegisterScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
@@ -61,6 +63,33 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation() {
     val rootNavController = rememberNavController()
     var loggedUser by remember { mutableStateOf<User?>(null) }
+    var showValidationDialog by remember { mutableStateOf(false) }
+    var registeredUserName by remember { mutableStateOf("") }
+
+    if (showValidationDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showValidationDialog = false
+                rootNavController.navigate("login") {
+                    popUpTo("register") { inclusive = true }
+                }
+            },
+            title = { Text("Inscription réussie") },
+            text = { Text("Bienvenue $registeredUserName ! Votre compte a été créé avec succès.\n\nVeuillez attendre la validation de l'administrateur pour pouvoir avoir accès à l'application.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showValidationDialog = false
+                        rootNavController.navigate("login") {
+                            popUpTo("register") { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     NavHost(navController = rootNavController, startDestination = "login") {
         composable("login") {
@@ -70,9 +99,27 @@ fun AppNavigation() {
                     rootNavController.navigate("main_screen") {
                         popUpTo("login") { inclusive = true }
                     }
+                },
+                onNavigateToRegister = {
+                    rootNavController.navigate("register")
                 }
             )
         }
+        
+        composable("register") {
+            RegisterScreen(
+                onRegistrationSuccess = { user ->
+                    registeredUserName = "${user.prenom} ${user.nom}"
+                    showValidationDialog = true
+                },
+                onNavigateToLogin = {
+                    rootNavController.navigate("login") {
+                        popUpTo("register") { inclusive = true }
+                    }
+                }
+            )
+        }
+        
         composable("main_screen") {
             MainScreen(
                 user = loggedUser,
