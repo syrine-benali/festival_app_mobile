@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -38,12 +39,14 @@ import androidx.navigation.compose.rememberNavController
 import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.ui.screen.LoginScreen
 import com.example.festivalappmobile.ui.screen.RegisterScreen
+import com.example.festivalappmobile.ui.screen.UsersAdminScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
 import com.example.festivalappmobile.domain.usecases.GetFestivalsUseCase
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
+import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,6 +142,13 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
     val bottomNavController = rememberNavController()
     val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Log the user role for debugging
+    if (user != null) {
+        android.util.Log.d("MAINSCREEN", "User logged in - Role: '${user.role}' (ADMIN check: ${user.role == "ADMIN"})")
+    } else {
+        android.util.Log.d("MAINSCREEN", "No user logged in")
+    }
 
     Scaffold(
         bottomBar = {
@@ -165,6 +175,22 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                         }
                     }
                 )
+                
+                // Show Users tab only for admins or super-organisateurs
+                if (user != null && (user.role == "ADMIN" || user.role == "SUPER_ORGANISATEUR")) {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Utilisateurs") },
+                        label = { Text("Utilisateurs") },
+                        selected = currentRoute == "users",
+                        onClick = {
+                            bottomNavController.navigate("users") {
+                                popUpTo(bottomNavController.graph.startDestinationId)
+                                launchSingleTop = true
+                            }
+                        }
+                    )
+                }
+                
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.Person, contentDescription = "Mon Compte") },
                     label = { Text("Mon Compte") },
@@ -212,6 +238,11 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     }
                 )
                 FestivalListScreen(viewModel = viewModel)
+            }
+
+            composable("users") {
+                val viewModel: UsersManagementViewModel = viewModel()
+                UsersAdminScreen(viewModel = viewModel)
             }
 
             composable("profile") {

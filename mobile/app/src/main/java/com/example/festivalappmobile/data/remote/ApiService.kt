@@ -5,10 +5,15 @@ import com.example.festivalappmobile.data.remote.dto.LoginResponseDto
 import com.example.festivalappmobile.data.remote.dto.ReservationDto
 import com.example.festivalappmobile.data.remote.dto.FestivalDto
 import com.example.festivalappmobile.data.remote.dto.RegisterRequestDto
+import com.example.festivalappmobile.data.remote.dto.UsersResponseDto
+import com.example.festivalappmobile.data.remote.dto.UpdateUserRequestDto
+import com.example.festivalappmobile.data.remote.dto.UpdateUserResponseDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
 
 // La liste des endpoints
 // liste tous les appels HTTP disponibles
@@ -25,4 +30,13 @@ interface ApiService {
 
     @POST("api/auth/register")
     suspend fun register(@Body request: RegisterRequestDto): Response<LoginResponseDto>
+    
+    @GET("api/users/")
+    suspend fun getUsers(): Response<UsersResponseDto>
+    
+    @PUT("api/users/{id}")
+    suspend fun updateUser(
+        @Path("id") userId: Int,
+        @Body request: UpdateUserRequestDto
+    ): Response<UpdateUserResponseDto>
 }

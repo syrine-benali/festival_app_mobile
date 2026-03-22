@@ -36,6 +36,8 @@ class LoginViewModel : ViewModel() {
             loginUseCase(uiState.value.email, uiState.value.password)
                 .onSuccess { user ->
                     android.util.Log.d("LOGIN", "Succès ! User : ${user.email}")
+                    android.util.Log.d("LOGIN", "User Role: '${user.role}' (length: ${user.role.length})")
+                    android.util.Log.d("LOGIN", "User Valide: ${user.valide}")
                     _uiState.update { it.copy(isLoading = false, isSuccess = true, user = user) }
                 }
                 .onFailure { e ->
