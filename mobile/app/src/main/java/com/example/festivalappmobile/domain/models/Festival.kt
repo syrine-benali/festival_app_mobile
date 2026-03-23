@@ -6,5 +6,13 @@ data class Festival(
     val nom: String,
     val lieu: String,
     val dateDebut: String,
-    val dateFin: String
+    val dateFin: String,
+    val nbTotalTable: Int,
+    val nbTotalChaise: Int,
+    val bigTables: Int,
+    val bigChairs: Int,
+    val smallTables: Int,
+    val smallChairs: Int,
+    val mairieTables: Int,
+    val mairieChairs: Int
 )

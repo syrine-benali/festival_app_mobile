@@ -22,6 +22,18 @@ interface ApiService {
     @GET("api/festivals")
     suspend fun getFestivals(): Response<List<FestivalDto>>
 
+    @GET("api/festivals/{id}")
+    suspend fun getFestivalById(@Path("id") id: Int): Response<FestivalDto>
+
+    @POST("api/festivals")
+    suspend fun createFestival(@Body body: FestivalCreateRequestDto): Response<FestivalDto>
+
+    @PUT("api/festivals/{id}")
+    suspend fun updateFestival(@Path("id") id: Int, @Body body: FestivalUpdateRequestDto): Response<FestivalDto>
+
+    @DELETE("api/festivals/{id}")
+    suspend fun deleteFestival(@Path("id") id: Int): Response<FestivalDto>
+
     @GET("api/editeurs")
     suspend fun getAllEditeurs(): Response<EditeurListResponseDto>
 
