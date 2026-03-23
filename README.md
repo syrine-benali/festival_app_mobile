@@ -35,3 +35,8 @@ To run the api tests on the Editeurs Repository, use
 ./gradlew clean :app:testDebugUnitTest --info --tests "com.example.festivalappmobile.api.EditeurApiTest"
 ```
 This aims to check the whole CRUD of Editeurs, because we lack at the moment a UI to test it.
+
+## Festival repository 
+```bash
+./gradlew cleanTest :app:testDebugUnitTest --tests "com.example.festivalappmobile.api.FestivalApiTest" --info
+```
