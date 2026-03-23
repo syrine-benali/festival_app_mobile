@@ -24,3 +24,14 @@
     📁 components : Vos éléments réutilisables (Cartes, boutons, AppBar).
 
     📁 theme : Déjà créé par Android Studio (Couleurs Material Design 3, Typographie).
+
+
+# API endpoints testing
+
+## Editeur Repository
+
+To run the api tests on the Editeurs Repository, use
+```bash
+./gradlew clean :app:testDebugUnitTest --info --tests "com.example.festivalappmobile.api.EditeurApiTest"
+```
+This aims to check the whole CRUD of Editeurs, because we lack at the moment a UI to test it.
