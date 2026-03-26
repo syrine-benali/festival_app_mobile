@@ -12,5 +12,3 @@ data class ReservationDto(
     val viendra_presente_ses_jeux: Boolean,
     val editeur: EditeurDto?
 )
-
-data class EditeurDto(val id: Int, val libelle: String)
