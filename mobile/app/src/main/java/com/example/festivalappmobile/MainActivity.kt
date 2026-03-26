@@ -39,7 +39,7 @@ import com.example.festivalappmobile.ui.screen.LoginScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
-import com.example.festivalappmobile.domain.usecases.GetFestivalsUseCase
+import com.example.festivalappmobile.domain.usecases.festival.GetFestivalsUseCase
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 
