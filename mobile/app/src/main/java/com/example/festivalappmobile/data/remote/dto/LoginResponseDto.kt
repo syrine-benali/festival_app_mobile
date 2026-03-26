@@ -8,7 +8,8 @@ import com.google.gson.annotations.SerializedName
 data class LoginResponseDto(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
-    @SerializedName("user") val user: UserDto
+    @SerializedName("user") val user: UserDto,
+    @SerializedName("token") val token: String? = null
 )
 
 // on ajoute le mapping
