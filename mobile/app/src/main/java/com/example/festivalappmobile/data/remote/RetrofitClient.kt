@@ -20,7 +20,7 @@ class SimpleCookieJar : CookieJar {
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         cookieStore.addAll(cookies)
         if (cookies.isNotEmpty()) {
-            android.util.Log.d("CookieJar", "✓ Saved ${cookies.size} cookies")
+            android.util.Log.d("CookieJar", " Saved ${cookies.size} cookies")
             cookies.forEach { cookie ->
                 android.util.Log.d("CookieJar", "  - ${cookie.name} = ${cookie.value}")
             }
@@ -30,7 +30,7 @@ class SimpleCookieJar : CookieJar {
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         val validCookies = cookieStore.filter { it.expiresAt > Date().time }
         if (validCookies.isNotEmpty()) {
-            android.util.Log.d("CookieJar", "✓ Sending ${validCookies.size} cookies to ${url.host}")
+            android.util.Log.d("CookieJar", "Sending ${validCookies.size} cookies to ${url.host}")
             validCookies.forEach { cookie ->
                 android.util.Log.d("CookieJar", "  - ${cookie.name}")
             }
