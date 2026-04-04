@@ -1,61 +1,110 @@
 package com.example.festivalappmobile
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material.icons.filled.Star
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.festivalappmobile.domain.models.User
+import com.example.festivalappmobile.data.local.TokenManager
+import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.ui.screen.EditeurListScreen
+import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.screen.LoginScreen
 import com.example.festivalappmobile.ui.screen.RegisterScreen
+import com.example.festivalappmobile.ui.screen.ReservationDetailScreen
+import com.example.festivalappmobile.ui.screen.ReservationListScreen
 import com.example.festivalappmobile.ui.screen.UsersAdminScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
-import com.example.festivalappmobile.data.remote.RetrofitClient
-import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
-import com.example.festivalappmobile.domain.usecases.festival.GetFestivalsUseCase
-import com.example.festivalappmobile.ui.screen.FestivalListScreen
+import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
+import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
+import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
+import kotlinx.coroutines.launch
+
+private data class AppTab(
+    val route: String,
+    val label: String,
+    val marker: String
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Initialiser le TokenManager et Retrofit une seule fois
+        val tokenManager = TokenManager(applicationContext)
+        RetrofitClient.init(tokenManager)
+
         setContent {
             FestivalAppMobileTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation()
+                    val navController = rememberNavController()
+                    val context = applicationContext
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = "login"
+                    ) {
+
+                        composable("login") {
+                            LoginScreen(
+                                onLoginSuccess = {
+                                    navController.navigate("app") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                },
+                                onNavigateToRegister = {
+                                    navController.navigate("register")
+                                }
+                            )
+                        }
+
+                        composable("register") {
+                            RegisterScreen(
+                                onRegistrationSuccess = {
+                                    navController.navigate("login") {
+                                        popUpTo("register") { inclusive = true }
+                                    }
+                                },
+                                onNavigateToLogin = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("app") {
+                            AppShell(context = context)
+                        }
+                    }
                 }
             }
         }
@@ -63,210 +112,116 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNavigation() {
-    val rootNavController = rememberNavController()
-    var loggedUser by remember { mutableStateOf<User?>(null) }
-    var showValidationDialog by remember { mutableStateOf(false) }
-    var registeredUserName by remember { mutableStateOf("") }
-
-    if (showValidationDialog) {
-        AlertDialog(
-            onDismissRequest = { 
-                showValidationDialog = false
-                rootNavController.navigate("login") {
-                    popUpTo("register") { inclusive = true }
-                }
-            },
-            title = { Text("Inscription réussie") },
-            text = { Text("Bienvenue $registeredUserName ! Votre compte a été créé avec succès.\n\nVeuillez attendre la validation de l'administrateur pour pouvoir avoir accès à l'application.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showValidationDialog = false
-                        rootNavController.navigate("login") {
-                            popUpTo("register") { inclusive = true }
-                        }
-                    }
-                ) {
-                    Text("OK")
-                }
-            }
+private fun AppShell(context: Context) {
+    val appNavController = rememberNavController()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerScope = rememberCoroutineScope()
+    val tabs = remember {
+        listOf(
+            AppTab(route = "festivals", label = "Festivals", marker = "F"),
+            AppTab(route = "editeurs", label = "Editeurs", marker = "E"),
+            AppTab(route = "reservations", label = "Reservations", marker = "R"),
+            AppTab(route = "users-management", label = "User Management", marker = "M")
         )
     }
-
-    NavHost(navController = rootNavController, startDestination = "login") {
-        composable("login") {
-            LoginScreen(
-                onLoginSuccess = { user ->
-                    loggedUser = user
-                    rootNavController.navigate("main_screen") {
-                        popUpTo("login") { inclusive = true }
-                    }
-                },
-                onNavigateToRegister = {
-                    rootNavController.navigate("register")
-                }
-            )
-        }
-        
-        composable("register") {
-            RegisterScreen(
-                onRegistrationSuccess = { user ->
-                    registeredUserName = "${user.prenom} ${user.nom}"
-                    showValidationDialog = true
-                },
-                onNavigateToLogin = {
-                    rootNavController.navigate("login") {
-                        popUpTo("register") { inclusive = true }
-                    }
-                }
-            )
-        }
-        
-        composable("main_screen") {
-            MainScreen(
-                user = loggedUser,
-                onLogout = {
-                    loggedUser = null
-                    rootNavController.navigate("login") {
-                        popUpTo("main_screen") { inclusive = true }
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun MainScreen(user: User?, onLogout: () -> Unit) {
-    val bottomNavController = rememberNavController()
-    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
+    val navBackStackEntry by appNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
-    // Log the user role for debugging
-    if (user != null) {
-        android.util.Log.d("MAINSCREEN", "User logged in - Role: '${user.role}' (ADMIN check: ${user.role == "ADMIN"})")
-    } else {
-        android.util.Log.d("MAINSCREEN", "No user logged in")
-    }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Filled.List, contentDescription = "Réservations") },
-                    label = { Text("Réservations") },
-                    selected = currentRoute == "reservations",
-                    onClick = {
-                        bottomNavController.navigate("reservations") {
-                            popUpTo(bottomNavController.graph.startDestinationId)
-                            launchSingleTop = true
-                        }
-                    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(modifier = Modifier.width(240.dp)) {
+                Text(
+                    text = "Festival App",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
                 )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Filled.Star, contentDescription = "Festivals") },
-                    label = { Text("Festivals") },
-                    selected = currentRoute == "festivals",
-                    onClick = {
-                        bottomNavController.navigate("festivals") {
-                            popUpTo(bottomNavController.graph.startDestinationId)
-                            launchSingleTop = true
-                        }
-                    }
-                )
-                
-                // Show Users tab only for admins or super-organisateurs
-                if (user != null && (user.role == "ADMIN" || user.role == "SUPER_ORGANISATEUR")) {
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Utilisateurs") },
-                        label = { Text("Utilisateurs") },
-                        selected = currentRoute == "users",
+                tabs.forEach { tab ->
+                    val selected = currentRoute == tab.route ||
+                        (tab.route == "reservations" && currentRoute == "reservation/{id}")
+                    NavigationDrawerItem(
+                        selected = selected,
                         onClick = {
-                            bottomNavController.navigate("users") {
-                                popUpTo(bottomNavController.graph.startDestinationId)
+                            appNavController.navigate(tab.route) {
+                                popUpTo(appNavController.graph.startDestinationId) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
+                                restoreState = true
                             }
+                            drawerScope.launch { drawerState.close() }
+                        },
+                        icon = { Text(tab.marker) },
+                        label = { Text(tab.label) },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = appNavController,
+                startDestination = "festivals"
+            ) {
+                composable("reservations") {
+                    val vm: ReservationListViewModel = viewModel(
+                        factory = ReservationListViewModel.factory(context)
+                    )
+                    ReservationListScreen(
+                        viewModel = vm,
+                        onReservationClick = { id ->
+                            appNavController.navigate("reservation/$id")
                         }
                     )
                 }
-                
-                NavigationBarItem(
-                    icon = { Icon(Icons.Filled.Person, contentDescription = "Mon Compte") },
-                    label = { Text("Mon Compte") },
-                    selected = currentRoute == "profile",
-                    onClick = {
-                        bottomNavController.navigate("profile") {
-                            popUpTo(bottomNavController.graph.startDestinationId)
-                            launchSingleTop = true
-                        }
-                    }
-                )
-            }
-        }
-    ) { innerPadding ->
-        NavHost(
-            navController = bottomNavController,
-            startDestination = "reservations",
-            modifier = Modifier.padding(innerPadding)
-        ) {
 
-            composable("reservations") {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("C'est ici qu'apparaîtra la liste des réservations !")
+                composable("reservation/{id}") { backStackEntry ->
+                    val id = backStackEntry.arguments
+                        ?.getString("id")
+                        ?.toIntOrNull()
+                        ?: return@composable
+
+                    val vm: ReservationDetailViewModel = viewModel(
+                        factory = ReservationDetailViewModel.factory(context, id)
+                    )
+                    ReservationDetailScreen(
+                        viewModel = vm,
+                        onBack = { appNavController.popBackStack() }
+                    )
+                }
+
+                composable("editeurs") {
+                    val vm: EditeurListViewModel = viewModel(
+                        factory = EditeurListViewModel.factory()
+                    )
+                    EditeurListScreen(viewModel = vm)
+                }
+
+                composable("festivals") {
+                    val vm: FestivalListViewModel = viewModel(
+                        factory = FestivalListViewModel.factory()
+                    )
+                    FestivalListScreen(viewModel = vm)
+                }
+
+                composable("users-management") {
+                    val vm: UsersManagementViewModel = viewModel()
+                    UsersAdminScreen(viewModel = vm)
                 }
             }
-            
-            composable("festivals") {
-                val viewModel: FestivalListViewModel = viewModel(
-                    factory = object : ViewModelProvider.Factory {
-                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            // Manually creating the dependencies of the viewmodel OUTSIDE of it
-                            val api = RetrofitClient.instance
-                            val repo = FestivalRepositoryImpl(api)
-                            val useCase = GetFestivalsUseCase(repo)
 
-                            // creating the view model from factory, with dependency inversion
-                            // This synatx is tedious and would be easier to read/manage with a framework like Hilt/Dagger
-                            @Suppress("UNCHECKED_CAST")
-                            return FestivalListViewModel(useCase) as T
-                        }
+            ExtendedFloatingActionButton(
+                onClick = {
+                    drawerScope.launch {
+                        if (drawerState.isClosed) drawerState.open() else drawerState.close()
                     }
-                )
-                FestivalListScreen(viewModel = viewModel)
-            }
-
-            composable("users") {
-                val viewModel: UsersManagementViewModel = viewModel()
-                UsersAdminScreen(viewModel = viewModel)
-            }
-
-            composable("profile") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (user != null) {
-                        Text("Bienvenue ${user.prenom} ${user.nom} !")
-                        Text("Role : ${user.role}")
-                        Text("Email : ${user.email}")
-                    }
-
-                    Button(
-                        onClick = onLogout,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-                        Text("Se déconnecter")
-                    }
-                }
-            }
+                },
+                icon = { Icon(Icons.Default.Menu, contentDescription = null) },
+                text = { Text("Menu") },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+            )
         }
     }
 }

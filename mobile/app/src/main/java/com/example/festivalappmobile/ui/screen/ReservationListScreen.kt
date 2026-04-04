@@ -3,59 +3,117 @@ package com.example.festivalappmobile.ui.screen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.festivalappmobile.ui.viewmodels.ReservationViewModel
-import com.example.festivalappmobile.domain.models.Reservation
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.festivalappmobile.domain.models.WorkflowStatus
+import com.example.festivalappmobile.ui.components.ReservationCard
+import com.example.festivalappmobile.ui.components.WorkflowStatusChip
+import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReservationListScreen(viewModel: ReservationViewModel) {
-    // Collecte de l'état (UDF)
-    val state by viewModel.uiState.collectAsState()
+fun ReservationListScreen(
+    viewModel: ReservationListViewModel,
+    onReservationClick: (Int) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(onClick = { /* Naviguer vers formulaire de création */ }) {
-                Text("+")
-            }
+        topBar = {
+            TopAppBar(
+                title = { Text("Réservations") },
+                actions = {
+                    if (uiState.isOffline) {
+                        Icon(Icons.Default.WifiOff, contentDescription = "Hors-ligne",
+                            tint = MaterialTheme.colorScheme.error)
+                    }
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Actualiser")
+                    }
+                }
+            )
         }
-    ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
 
-            if (state.isLoading && state.reservations.isEmpty()) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-
-            state.errorMessage?.let { error ->
-                Text(text = error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                items(state.reservations) { reservation ->
-                    ReservationCard(reservation)
+            // Bandeau offline
+            if (uiState.isOffline) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.WifiOff, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer)
+                        Text("Mode hors-ligne — données en cache",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun ReservationCard(reservation: Reservation) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = reservation.editeurNom ?: "Éditeur inconnu", style = MaterialTheme.typography.titleMedium)
-            Text(text = "Statut : ${reservation.workflowStatus}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Type : ${reservation.typeReservant}", style = MaterialTheme.typography.bodySmall)
+            // Filtres workflow
+            val tabCount = WorkflowStatus.entries.size + 1
+            val selectedTabIndex = (WorkflowStatus.entries.indexOf(uiState.filterStatus) + 1)
+                .coerceIn(0, tabCount - 1)
+            ScrollableTabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                FilterChip(
+                    selected = uiState.filterStatus == null,
+                    onClick = { viewModel.setFilter(null) },
+                    label = { Text("Tous") },
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+                WorkflowStatus.entries.forEach { status ->
+                    FilterChip(
+                        selected = uiState.filterStatus == status,
+                        onClick = { viewModel.setFilter(status) },
+                        label = { Text(status.label) },
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
+
+            // Contenu
+            when {
+                uiState.isLoading && uiState.reservations.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                uiState.error != null -> {
+                    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text(uiState.error!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                uiState.reservations.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Aucune réservation")
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.reservations) { res ->
+                            ReservationCard(res) { onReservationClick(res.id) }
+                        }
+                    }
+                }
+            }
         }
     }
 }

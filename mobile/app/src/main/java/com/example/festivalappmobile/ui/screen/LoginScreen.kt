@@ -34,8 +34,8 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess && uiState.user != null) {
-            onLoginSuccess(uiState.user!!)
+        if (uiState.isSuccess) {
+            uiState.user?.let(onLoginSuccess)
         }
     }
 

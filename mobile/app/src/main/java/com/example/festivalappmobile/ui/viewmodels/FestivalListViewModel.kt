@@ -1,7 +1,10 @@
 package com.example.festivalappmobile.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
 import com.example.festivalappmobile.domain.models.Festival
 import com.example.festivalappmobile.domain.usecases.festival.GetFestivalsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,5 +37,17 @@ class FestivalListViewModel(private val getFestivalsUseCase: GetFestivalsUseCase
                 _uiState.value = FestivalUiState.Error(e.message ?: "An unexpected error occurred")
             }
         }
+    }
+
+    companion object {
+        fun factory(): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    val repository = FestivalRepositoryImpl(RetrofitClient.instance)
+                    val useCase = GetFestivalsUseCase(repository)
+                    return FestivalListViewModel(useCase) as T
+                }
+            }
     }
 }

@@ -16,6 +16,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.DELETE
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 // La liste des endpoints
 // liste tous les appels HTTP disponibles
@@ -24,9 +25,67 @@ interface ApiService {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequestDto): Response<LoginResponseDto>
 
-    @GET("api/reservations")
-    suspend fun getReservations(): Response<List<ReservationDto>>
+    // ===== RESERVATIONS =====
+    // Dans ApiService.kt, ajouter après login :
 
+    // ========== RÉSERVATIONS ==========
+    @GET("api/reservations")
+    suspend fun getReservations(
+        @Query("festivalId") festivalId: Int? = null,
+        @Query("workflowStatus") workflowStatus: String? = null
+    ): Response<ReservationListResponseDto>
+
+    @GET("api/reservations/{id}")
+    suspend fun getReservationById(@Path("id") id: Int): Response<ReservationResponseDto>
+
+    @POST("api/reservations")
+    suspend fun createReservation(
+        @Body request: CreateReservationRequestDto
+    ): Response<ReservationResponseDto>
+
+    @PUT("api/reservations/{id}")
+    suspend fun updateReservation(
+        @Path("id") id: Int,
+        @Body request: UpdateReservationRequestDto
+    ): Response<ReservationResponseDto>
+
+    // ========== CONTACTS ==========
+    @POST("api/reservations/{id}/contacts")
+    suspend fun addContact(
+        @Path("id") id: Int,
+        @Body request: AddContactRequestDto
+    ): Response<ReservationResponseDto>
+
+    @DELETE("api/reservations/contacts/{contactId}")
+    suspend fun deleteContact(@Path("contactId") contactId: Int): Response<Any>
+
+    // ========== LIGNES ==========
+    @POST("api/reservations/{id}/lines")
+    suspend fun addLine(
+        @Path("id") id: Int,
+        @Body request: AddLineRequestDto
+    ): Response<ReservationResponseDto>
+
+    @DELETE("api/reservations/lines/{lineId}")
+    suspend fun deleteLine(@Path("lineId") lineId: Int): Response<Any>
+
+    // ========== JEUX ==========
+    @POST("api/reservations/{id}/jeux")
+    suspend fun addJeu(
+        @Path("id") id: Int,
+        @Body request: AddJeuRequestDto
+    ): Response<ReservationResponseDto>
+
+    @PUT("api/reservations/jeux/{jeuId}")
+    suspend fun updateJeu(
+        @Path("jeuId") jeuId: Int,
+        //@Body request: UpdateJeuRequestDto  // TODO: créer cet fichier
+    ): Response<ReservationResponseDto>
+
+    @DELETE("api/reservations/jeux/{jeuId}")
+    suspend fun deleteJeu(@Path("jeuId") jeuId: Int): Response<Any>
+
+    // ===== FESTIVALS =====
     @GET("api/festivals")
     suspend fun getFestivals(): Response<List<FestivalDto>>
 
@@ -52,6 +111,8 @@ interface ApiService {
 
     @DELETE("api/festivals/{id}")
     suspend fun deleteFestival(@Path("id") id: Int): Response<FestivalDto>
+
+    // ===== EDITEURS =====
 
     @GET("api/editeurs")
     suspend fun getAllEditeurs(): Response<EditeurListResponseDto>

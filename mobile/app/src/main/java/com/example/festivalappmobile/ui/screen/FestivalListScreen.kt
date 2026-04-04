@@ -36,7 +36,7 @@ fun FestivalListScreen(viewModel: FestivalListViewModel) {
                 }
                 is FestivalUiState.Error -> {
                     val message = (state as FestivalUiState.Error).message
-                    Text(text = "Error: \$message", color = MaterialTheme.colorScheme.error)
+                    Text(text = "Erreur: $message", color = MaterialTheme.colorScheme.error)
                 }
                 is FestivalUiState.Success -> {
                     val festivals = (state as FestivalUiState.Success).festivals
