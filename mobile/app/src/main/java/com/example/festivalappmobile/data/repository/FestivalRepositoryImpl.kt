@@ -1,28 +1,72 @@
 package com.example.festivalappmobile.data.repository
 
 import com.example.festivalappmobile.data.remote.ApiService
-import com.example.festivalappmobile.data.remote.dto.FestivalDto
+import com.example.festivalappmobile.data.remote.dto.FestivalCreateRequestDto
+import com.example.festivalappmobile.data.remote.dto.FestivalUpdateRequestDto
+import com.example.festivalappmobile.data.remote.mapper.toDomain
 import com.example.festivalappmobile.domain.models.Festival
 import com.example.festivalappmobile.domain.repository.FestivalRepository
 
-// service used to make the API DTO and the app dto match and compatible
 class FestivalRepositoryImpl(private val apiService: ApiService) : FestivalRepository {
+
     override suspend fun getFestivals(): List<Festival> {
-        val response = apiService.getFestivals()
-        if (response.isSuccessful) {
-            val body = response.body()
-            if (body != null) {
-                return body.map { dto ->
-                    Festival(
-                        id = dto.id,
-                        nom = dto.nom,
-                        lieu = dto.lieu,
-                        dateDebut = dto.dateDebut,
-                        dateFin = dto.dateFin
-                    )
-                }
+        return try {
+            val response = apiService.getFestivals()
+            if (response.isSuccessful) {
+                response.body()?.map { it.toDomain() } ?: emptyList()
+            } else {
+                emptyList()
             }
+        } catch (e: Exception) {
+            emptyList()
         }
-        return emptyList()
+    }
+
+    override suspend fun getFestivalById(id: Int): Festival? {
+        return try {
+            val response = apiService.getFestivalById(id)
+            if (response.isSuccessful) {
+                response.body()?.toDomain()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun createFestival(request: FestivalCreateRequestDto): Festival? {
+        return try {
+            val response = apiService.createFestival(request)
+            if (response.isSuccessful) {
+                response.body()?.toDomain()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun updateFestival(id: Int, request: FestivalUpdateRequestDto): Festival? {
+        return try {
+            val response = apiService.updateFestival(id, request)
+            if (response.isSuccessful) {
+                response.body()?.toDomain()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun deleteFestival(id: Int): Boolean {
+        return try {
+            val response = apiService.deleteFestival(id)
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
     }
 }
