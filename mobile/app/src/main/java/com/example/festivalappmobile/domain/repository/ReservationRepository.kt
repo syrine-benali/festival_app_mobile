@@ -15,8 +15,11 @@ interface ReservationRepository {
     suspend fun createReservation(
         editeurId: Int,
         festivalId: Int,
-        typeReservant: TypeReservant = TypeReservant.EDITEUR
+        typeReservant: TypeReservant = TypeReservant.EDITEUR,
+        notesClient: String? = null
     ): Result<Reservation>
+
+    suspend fun deleteReservation(id: Int): Result<Unit>
 
     suspend fun updateWorkflowStatus(
         id: Int,
@@ -25,13 +28,18 @@ interface ReservationRepository {
 
     suspend fun updateReservationFlags(
         id: Int,
+        typeReservant: TypeReservant? = null,
+        dateFacturation: String? = null,
         viendraPresenteSesJeux: Boolean? = null,
         nousPresentons: Boolean? = null,
         listeJeuxDemandee: Boolean? = null,
         listeJeuxObtenue: Boolean? = null,
         jeuxRecusPhysiquement: Boolean? = null,
         notesClient: String? = null,
-        notesWorkflow: String? = null
+        notesWorkflow: String? = null,
+        typeRemise: TypeRemise? = null,
+        valeurRemise: Double? = null,
+        nbPrisesElectriques: Int? = null
     ): Result<Reservation>
 
     // Contacts
@@ -49,6 +57,13 @@ interface ReservationRepository {
         zoneTarifaireId: Int,
         nbTables: Int,
         grandesTablesSouhaitees: Boolean = false
+    ): Result<ReservationLine>
+
+    suspend fun updateLine(
+        lineId: Int,
+        nbTables: Int? = null,
+        nbM2: Double? = null,
+        grandesTablesSouhaitees: Boolean? = null
     ): Result<ReservationLine>
 
     suspend fun deleteLine(lineId: Int): Result<Unit>
@@ -70,6 +85,8 @@ interface ReservationRepository {
     ): Result<ReservationJeu>
 
     suspend fun deleteJeu(jeuId: Int): Result<Unit>
+
+    suspend fun calculatePrice(reservationId: Int): Result<Double>
 
     // Sync offline
     fun isOnline(): Boolean

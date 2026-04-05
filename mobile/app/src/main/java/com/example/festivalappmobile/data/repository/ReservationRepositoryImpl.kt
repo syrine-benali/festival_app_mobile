@@ -86,9 +86,32 @@ class ReservationRepositoryImpl(
     }
 
     override suspend fun createReservation(
-        editeurId: Int, festivalId: Int, typeReservant: TypeReservant
+        editeurId: Int,
+        festivalId: Int,
+        typeReservant: TypeReservant,
+        notesClient: String?
     ): Result<Reservation> = safeApiCall {
-        api.createReservation(CreateReservationRequestDto(editeurId, festivalId, typeReservant.name))
+        api.createReservation(
+            CreateReservationRequestDto(
+                editeurId = editeurId,
+                festivalId = festivalId,
+                typeReservant = typeReservant.name,
+                notesClient = notesClient
+            )
+        )
+    }
+
+    override suspend fun deleteReservation(id: Int): Result<Unit> {
+        return try {
+            val response = api.deleteReservation(id)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(response.body()?.message ?: "Erreur suppression réservation"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override suspend fun updateWorkflowStatus(id: Int, status: WorkflowStatus): Result<Reservation> =
@@ -98,22 +121,32 @@ class ReservationRepositoryImpl(
 
     override suspend fun updateReservationFlags(
         id: Int,
+        typeReservant: TypeReservant?,
+        dateFacturation: String?,
         viendraPresenteSesJeux: Boolean?,
         nousPresentons: Boolean?,
         listeJeuxDemandee: Boolean?,
         listeJeuxObtenue: Boolean?,
         jeuxRecusPhysiquement: Boolean?,
         notesClient: String?,
-        notesWorkflow: String?
+        notesWorkflow: String?,
+        typeRemise: TypeRemise?,
+        valeurRemise: Double?,
+        nbPrisesElectriques: Int?
     ): Result<Reservation> = safeApiCall {
         api.updateReservation(id, UpdateReservationRequestDto(
+            typeReservant = typeReservant?.name,
+            dateFacturation = dateFacturation,
             viendraPresenteSesJeux = viendraPresenteSesJeux,
             nousPresentons = nousPresentons,
             listeJeuxDemandee = listeJeuxDemandee,
             listeJeuxObtenue = listeJeuxObtenue,
             jeuxRecusPhysiquement = jeuxRecusPhysiquement,
             notesClient = notesClient,
-            notesWorkflow = notesWorkflow
+            notesWorkflow = notesWorkflow,
+            typeRemise = typeRemise?.name,
+            valeurRemise = valeurRemise,
+            nbPrisesElectriques = nbPrisesElectriques
         ))
     }
 
@@ -122,10 +155,9 @@ class ReservationRepositoryImpl(
     ): Result<ReservationContact> {
         return try {
             val response = api.addContact(reservationId, AddContactRequestDto(dateContact, commentaire))
-            if (response.isSuccessful) {
-                val contacts = response.body()?.reservation?.reservationContacts
-                val added = contacts?.lastOrNull()?.toDomain()
-                    ?: return Result.failure(Exception("Contact non retourné"))
+            if (response.isSuccessful && response.body()?.success == true) {
+                val added = response.body()?.contact?.toDomain()
+                    ?: return Result.failure(Exception("Contact non retourné par le serveur"))
                 Result.success(added)
             } else {
                 Result.failure(Exception("Erreur ajout contact"))
@@ -147,15 +179,41 @@ class ReservationRepositoryImpl(
         return try {
             val response = api.addLine(reservationId,
                 AddLineRequestDto(zoneTarifaireId, nbTables, grandesTablesSouhaitees))
-            if (response.isSuccessful) {
-                val lines = response.body()?.reservation?.reservationLines
-                val added = lines?.lastOrNull()?.toDomain()
-                    ?: return Result.failure(Exception("Ligne non retournée"))
+            if (response.isSuccessful && response.body()?.success == true) {
+                val added = response.body()?.line?.toDomain()
+                    ?: return Result.failure(Exception("Ligne non retournée par le serveur"))
                 Result.success(added)
             } else {
                 Result.failure(Exception("Erreur ajout ligne"))
             }
         } catch (e: Exception) { Result.failure(e) }
+    }
+
+    override suspend fun updateLine(
+        lineId: Int,
+        nbTables: Int?,
+        nbM2: Double?,
+        grandesTablesSouhaitees: Boolean?
+    ): Result<ReservationLine> {
+        return try {
+            val response = api.updateLine(
+                lineId,
+                UpdateLineRequestDto(
+                    nbTables = nbTables,
+                    nbM2 = nbM2,
+                    grandesTablesSouhaitees = grandesTablesSouhaitees
+                )
+            )
+            if (response.isSuccessful && response.body()?.success == true) {
+                val updated = response.body()?.line?.toDomain()
+                    ?: return Result.failure(Exception("Ligne non retournée par le serveur"))
+                Result.success(updated)
+            } else {
+                Result.failure(Exception("Erreur mise à jour ligne"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override suspend fun deleteLine(lineId: Int): Result<Unit> {
@@ -172,10 +230,9 @@ class ReservationRepositoryImpl(
         return try {
             val response = api.addJeu(reservationId,
                 AddJeuRequestDto(jeuId, nbExemplaires, nbTablesAllouees, zonePlanId))
-            if (response.isSuccessful) {
-                val jeux = response.body()?.reservation?.reservationJeux
-                val added = jeux?.lastOrNull()?.toDomain()
-                    ?: return Result.failure(Exception("Jeu non retourné"))
+            if (response.isSuccessful && response.body()?.success == true) {
+                val added = response.body()?.jeu?.toDomain()
+                    ?: return Result.failure(Exception("Jeu non retourné par le serveur"))
                 Result.success(added)
             } else {
                 Result.failure(Exception("Erreur ajout jeu"))
@@ -185,13 +242,47 @@ class ReservationRepositoryImpl(
 
     override suspend fun updateJeu(
         jeuId: Int, nbExemplaires: Int?, nbTablesAllouees: Int?, zonePlanId: Int?
-    ): Result<ReservationJeu> = Result.failure(Exception("À implémenter"))
+    ): Result<ReservationJeu> {
+        return try {
+            val response = api.updateJeu(
+                jeuId,
+                UpdateJeuRequestDto(
+                    nbExemplaires = nbExemplaires,
+                    nbTablesAllouees = nbTablesAllouees,
+                    zonePlanId = zonePlanId
+                )
+            )
+            if (response.isSuccessful && response.body()?.success == true) {
+                val updated = response.body()?.jeu?.toDomain()
+                    ?: return Result.failure(Exception("Jeu non retourné par le serveur"))
+                Result.success(updated)
+            } else {
+                Result.failure(Exception("Erreur mise à jour jeu"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     override suspend fun deleteJeu(jeuId: Int): Result<Unit> {
         return try {
-            api.deleteJeu(jeuId)
-            Result.success(Unit)
+            val response = api.deleteJeu(jeuId)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Erreur suppression jeu"))
         } catch (e: Exception) { Result.failure(e) }
+    }
+
+    override suspend fun calculatePrice(reservationId: Int): Result<Double> {
+        return try {
+            val response = api.calculatePrice(reservationId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.totalGeneral)
+            } else {
+                Result.failure(Exception("Erreur calcul du prix"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     // Helper : appel API sécurisé qui retourne un Reservation

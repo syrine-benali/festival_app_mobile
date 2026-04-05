@@ -88,6 +88,11 @@ data class ReservationResponseDto(
     @SerializedName("reservation") val reservation: ReservationDto?
 )
 
+data class ReservationDeleteResponseDto(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String?
+)
+
 data class ReservationListResponseDto(
     @SerializedName("success") val success: Boolean,
     @SerializedName("data") val data: List<ReservationSummaryDto>?,
@@ -110,11 +115,14 @@ data class ReservationSummaryDto(
 data class CreateReservationRequestDto(
     @SerializedName("editeurId") val editeurId: Int,
     @SerializedName("festivalId") val festivalId: Int,
-    @SerializedName("typeReservant") val typeReservant: String = "EDITEUR"
+    @SerializedName("typeReservant") val typeReservant: String = "EDITEUR",
+    @SerializedName("notesClient") val notesClient: String? = null
 )
 
 data class UpdateReservationRequestDto(
     @SerializedName("workflowStatus") val workflowStatus: String? = null,
+    @SerializedName("typeReservant") val typeReservant: String? = null,
+    @SerializedName("dateFacturation") val dateFacturation: String? = null,
     @SerializedName("viendraPresenteSesJeux") val viendraPresenteSesJeux: Boolean? = null,
     @SerializedName("nousPresentons") val nousPresentons: Boolean? = null,
     @SerializedName("listeJeuxDemandee") val listeJeuxDemandee: Boolean? = null,
@@ -132,10 +140,26 @@ data class AddContactRequestDto(
     @SerializedName("commentaire") val commentaire: String? = null
 )
 
+data class AddContactResponseDto(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("contact") val contact: ReservationContactDto?
+)
+
 data class AddLineRequestDto(
     @SerializedName("zoneTarifaireId") val zoneTarifaireId: Int,
     @SerializedName("nbTables") val nbTables: Int,
     @SerializedName("grandesTablesSouhaitees") val grandesTablesSouhaitees: Boolean = false
+)
+
+data class UpdateLineRequestDto(
+    @SerializedName("nbTables") val nbTables: Int? = null,
+    @SerializedName("nbM2") val nbM2: Double? = null,
+    @SerializedName("grandesTablesSouhaitees") val grandesTablesSouhaitees: Boolean? = null
+)
+
+data class AddLineResponseDto(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("line") val line: ReservationLineDto?
 )
 
 data class AddJeuRequestDto(
@@ -143,4 +167,25 @@ data class AddJeuRequestDto(
     @SerializedName("nbExemplaires") val nbExemplaires: Int,
     @SerializedName("nbTablesAllouees") val nbTablesAllouees: Int,
     @SerializedName("zonePlanId") val zonePlanId: Int? = null
+)
+
+data class UpdateJeuRequestDto(
+    @SerializedName("nbExemplaires") val nbExemplaires: Int? = null,
+    @SerializedName("nbTablesAllouees") val nbTablesAllouees: Int? = null,
+    @SerializedName("zonePlanId") val zonePlanId: Int? = null
+)
+
+data class AddJeuResponseDto(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("jeu") val jeu: ReservationJeuDto?
+)
+
+data class PriceCalculationResponseDto(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("totalTables") val totalTables: Int,
+    @SerializedName("totalM2") val totalM2: Double,
+    @SerializedName("sousTotal") val sousTotal: Double,
+    @SerializedName("coutPrises") val coutPrises: Double,
+    @SerializedName("remise") val remise: Double,
+    @SerializedName("totalGeneral") val totalGeneral: Double
 )

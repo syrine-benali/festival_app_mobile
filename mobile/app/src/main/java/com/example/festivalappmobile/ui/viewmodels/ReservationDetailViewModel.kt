@@ -15,7 +15,10 @@ import kotlinx.coroutines.launch
 data class ReservationDetailUiState(
     val reservation: Reservation? = null,
     val isLoading: Boolean = true,
+    val isDeleting: Boolean = false,
     val isOffline: Boolean = false,
+    val totalToPay: Double? = null,
+    val deleted: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
 )
@@ -52,6 +55,7 @@ class ReservationDetailViewModel(
                             isOffline = !repo.isOnline()
                         )
                     }
+                    calculatePrice()
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -74,28 +78,57 @@ class ReservationDetailViewModel(
     fun addContactEntry(date: String, commentaire: String?) {
         viewModelScope.launch {
             addContact(reservationId, date, commentaire)
-                .onSuccess { load() }
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Contact ajouté") }
+                    load()
+                }
                 .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
         }
     }
 
-    fun updateFlag(
+    fun deleteContactEntry(contactId: Int) {
+        viewModelScope.launch {
+            repo.deleteContact(contactId)
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Contact supprimé") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun updateReservation(
+        typeReservant: TypeReservant? = null,
+        dateFacturation: String? = null,
         viendraPresenteSesJeux: Boolean? = null,
+        nousPresentons: Boolean? = null,
         listeJeuxDemandee: Boolean? = null,
         listeJeuxObtenue: Boolean? = null,
         jeuxRecusPhysiquement: Boolean? = null,
-        notesClient: String? = null
+        notesClient: String? = null,
+        notesWorkflow: String? = null,
+        typeRemise: TypeRemise? = null,
+        valeurRemise: Double? = null,
+        nbPrisesElectriques: Int? = null
     ) {
         viewModelScope.launch {
             repo.updateReservationFlags(
                 id = reservationId,
+                typeReservant = typeReservant,
+                dateFacturation = dateFacturation,
                 viendraPresenteSesJeux = viendraPresenteSesJeux,
+                nousPresentons = nousPresentons,
                 listeJeuxDemandee = listeJeuxDemandee,
                 listeJeuxObtenue = listeJeuxObtenue,
                 jeuxRecusPhysiquement = jeuxRecusPhysiquement,
-                notesClient = notesClient
+                notesClient = notesClient,
+                notesWorkflow = notesWorkflow,
+                typeRemise = typeRemise,
+                valeurRemise = valeurRemise,
+                nbPrisesElectriques = nbPrisesElectriques
             ).onSuccess { res ->
-                _uiState.update { it.copy(reservation = res) }
+                _uiState.update { it.copy(reservation = res, successMessage = "Réservation mise à jour") }
+                calculatePrice()
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message) }
             }
@@ -105,8 +138,113 @@ class ReservationDetailViewModel(
     fun addJeuEntry(jeuId: Int, nbExemplaires: Int, nbTables: Int, zonePlanId: Int?) {
         viewModelScope.launch {
             addJeu(reservationId, jeuId, nbExemplaires, nbTables, zonePlanId)
-                .onSuccess { load() }
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Jeu ajouté") }
+                    load()
+                }
                 .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun updateJeuEntry(jeuId: Int, nbExemplaires: Int?, nbTables: Int?, zonePlanId: Int?) {
+        viewModelScope.launch {
+            repo.updateJeu(jeuId, nbExemplaires, nbTables, zonePlanId)
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Jeu mis à jour") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun deleteJeuEntry(jeuId: Int) {
+        viewModelScope.launch {
+            repo.deleteJeu(jeuId)
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Jeu supprimé") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun addLineEntry(zoneTarifaireId: Int, nbTables: Int, grandesTablesSouhaitees: Boolean) {
+        viewModelScope.launch {
+            repo.addLine(reservationId, zoneTarifaireId, nbTables, grandesTablesSouhaitees)
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Ligne ajoutée") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun updateLineEntry(
+        lineId: Int,
+        nbTables: Int?,
+        nbM2: Double?,
+        grandesTablesSouhaitees: Boolean?
+    ) {
+        viewModelScope.launch {
+            repo.updateLine(lineId, nbTables, nbM2, grandesTablesSouhaitees)
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Ligne mise à jour") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun deleteLineEntry(lineId: Int) {
+        viewModelScope.launch {
+            repo.deleteLine(lineId)
+                .onSuccess {
+                    _uiState.update { it.copy(successMessage = "Ligne supprimée") }
+                    load()
+                }
+                .onFailure { e -> _uiState.update { it.copy(error = e.message) } }
+        }
+    }
+
+    fun deleteReservation() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDeleting = true, error = null) }
+            repo.deleteReservation(reservationId)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isDeleting = false,
+                            deleted = true,
+                            successMessage = "Réservation supprimée"
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            isDeleting = false,
+                            error = e.message ?: "Erreur suppression réservation"
+                        )
+                    }
+                }
+        }
+    }
+
+    fun consumeDeletedState() {
+        _uiState.update { it.copy(deleted = false) }
+    }
+
+    private fun calculatePrice() {
+        viewModelScope.launch {
+            repo.calculatePrice(reservationId)
+                .onSuccess { total ->
+                    _uiState.update { it.copy(totalToPay = total) }
+                }
+                .onFailure {
+                    // On garde le prix local en fallback si le calcul backend échoue.
+                    val fallback = _uiState.value.reservation?.totalPrice
+                    _uiState.update { it.copy(totalToPay = fallback) }
+                }
         }
     }
 

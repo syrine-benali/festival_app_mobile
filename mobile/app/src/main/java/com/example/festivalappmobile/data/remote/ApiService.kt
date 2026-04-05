@@ -49,12 +49,15 @@ interface ApiService {
         @Body request: UpdateReservationRequestDto
     ): Response<ReservationResponseDto>
 
+    @DELETE("api/reservations/{id}")
+    suspend fun deleteReservation(@Path("id") id: Int): Response<ReservationDeleteResponseDto>
+
     // ========== CONTACTS ==========
     @POST("api/reservations/{id}/contacts")
     suspend fun addContact(
         @Path("id") id: Int,
         @Body request: AddContactRequestDto
-    ): Response<ReservationResponseDto>
+    ): Response<AddContactResponseDto>
 
     @DELETE("api/reservations/contacts/{contactId}")
     suspend fun deleteContact(@Path("contactId") contactId: Int): Response<Any>
@@ -64,7 +67,13 @@ interface ApiService {
     suspend fun addLine(
         @Path("id") id: Int,
         @Body request: AddLineRequestDto
-    ): Response<ReservationResponseDto>
+    ): Response<AddLineResponseDto>
+
+    @PUT("api/reservations/lines/{lineId}")
+    suspend fun updateLine(
+        @Path("lineId") lineId: Int,
+        @Body request: UpdateLineRequestDto
+    ): Response<AddLineResponseDto>
 
     @DELETE("api/reservations/lines/{lineId}")
     suspend fun deleteLine(@Path("lineId") lineId: Int): Response<Any>
@@ -74,16 +83,19 @@ interface ApiService {
     suspend fun addJeu(
         @Path("id") id: Int,
         @Body request: AddJeuRequestDto
-    ): Response<ReservationResponseDto>
+    ): Response<AddJeuResponseDto>
 
     @PUT("api/reservations/jeux/{jeuId}")
     suspend fun updateJeu(
         @Path("jeuId") jeuId: Int,
-        //@Body request: UpdateJeuRequestDto  // TODO: créer cet fichier
-    ): Response<ReservationResponseDto>
+        @Body request: UpdateJeuRequestDto
+    ): Response<AddJeuResponseDto>
 
     @DELETE("api/reservations/jeux/{jeuId}")
     suspend fun deleteJeu(@Path("jeuId") jeuId: Int): Response<Any>
+
+    @GET("api/reservations/{id}/calculate-price")
+    suspend fun calculatePrice(@Path("id") id: Int): Response<PriceCalculationResponseDto>
 
     // ===== FESTIVALS =====
     @GET("api/festivals")
