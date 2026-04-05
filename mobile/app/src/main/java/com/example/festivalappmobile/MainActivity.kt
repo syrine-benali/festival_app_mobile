@@ -5,27 +5,36 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -47,12 +56,11 @@ import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
-import kotlinx.coroutines.launch
 
 private data class AppTab(
     val route: String,
     val label: String,
-    val marker: String
+    val icon: ImageVector
 )
 
 class MainActivity : ComponentActivity() {
@@ -114,51 +122,118 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppShell(context: Context) {
     val appNavController = rememberNavController()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val drawerScope = rememberCoroutineScope()
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    var isSidebarExpanded by rememberSaveable { mutableStateOf(screenWidth >= 600) }
+    val sidebarWidth by animateDpAsState(
+        targetValue = if (isSidebarExpanded) 108.dp else 72.dp,
+        animationSpec = tween(durationMillis = 220),
+        label = "sidebar-width"
+    )
+
     val tabs = remember {
         listOf(
-            AppTab(route = "festivals", label = "Festivals", marker = "F"),
-            AppTab(route = "editeurs", label = "Editeurs", marker = "E"),
-            AppTab(route = "reservations", label = "Reservations", marker = "R"),
-            AppTab(route = "users-management", label = "User Management", marker = "M")
+            AppTab(route = "festivals", label = "Festivals", icon = Icons.Default.Event),
+            AppTab(route = "editeurs", label = "Editeurs", icon = Icons.Default.Storefront),
+            AppTab(route = "reservations", label = "Reservations", icon = Icons.Default.TableRestaurant),
+            AppTab(route = "users-management", label = "Users", icon = Icons.Default.Groups)
         )
     }
     val navBackStackEntry by appNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(modifier = Modifier.width(240.dp)) {
-                Text(
-                    text = "Festival App",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)
-                )
-                tabs.forEach { tab ->
-                    val selected = currentRoute == tab.route ||
-                        (tab.route == "reservations" && currentRoute == "reservation/{id}")
-                    NavigationDrawerItem(
-                        selected = selected,
-                        onClick = {
-                            appNavController.navigate(tab.route) {
-                                popUpTo(appNavController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            drawerScope.launch { drawerState.close() }
-                        },
-                        icon = { Text(tab.marker) },
-                        label = { Text(tab.label) },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
+    LaunchedEffect(currentRoute) {
+        when {
+            currentRoute == "reservation/{id}" -> isSidebarExpanded = false
+            currentRoute in setOf("festivals", "editeurs", "reservations", "users-management") -> {
+                if (screenWidth >= 600) {
+                    isSidebarExpanded = true
                 }
             }
         }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier
+                .width(sidebarWidth)
+                .fillMaxHeight(),
+            tonalElevation = 2.dp,
+            shadowElevation = 3.dp,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp, start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    horizontalArrangement = if (isSidebarExpanded) Arrangement.SpaceBetween else Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isSidebarExpanded) {
+                        Text(
+                            text = "Festival",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                    IconButton(onClick = { isSidebarExpanded = !isSidebarExpanded }) {
+                        Icon(
+                            imageVector = if (isSidebarExpanded) {
+                                Icons.AutoMirrored.Filled.KeyboardArrowLeft
+                            } else {
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight
+                            },
+                            contentDescription = if (isSidebarExpanded) {
+                                "Réduire la barre latérale"
+                            } else {
+                                "Déployer la barre latérale"
+                            }
+                        )
+                    }
+                }
+
+                NavigationRail(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    tabs.forEach { tab ->
+                        val selected = currentRoute == tab.route ||
+                            (tab.route == "reservations" && currentRoute == "reservation/{id}")
+
+                        NavigationRailItem(
+                            selected = selected,
+                            onClick = {
+                                appNavController.navigate(tab.route) {
+                                    popUpTo(appNavController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = if (isSidebarExpanded) {
+                                { Text(tab.label) }
+                            } else {
+                                null
+                            },
+                            alwaysShowLabel = isSidebarExpanded
+                        )
+                    }
+                }
+            }
+        }
+
+        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
             NavHost(
                 navController = appNavController,
                 startDestination = "festivals"
@@ -209,19 +284,6 @@ private fun AppShell(context: Context) {
                     UsersAdminScreen(viewModel = vm)
                 }
             }
-
-            ExtendedFloatingActionButton(
-                onClick = {
-                    drawerScope.launch {
-                        if (drawerState.isClosed) drawerState.open() else drawerState.close()
-                    }
-                },
-                icon = { Icon(Icons.Default.Menu, contentDescription = null) },
-                text = { Text("Menu") },
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp)
-            )
         }
     }
 }

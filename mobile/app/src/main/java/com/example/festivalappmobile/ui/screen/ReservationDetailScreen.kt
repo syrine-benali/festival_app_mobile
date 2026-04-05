@@ -19,6 +19,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,6 +33,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +51,10 @@ import com.example.festivalappmobile.domain.models.TypeReservant
 import com.example.festivalappmobile.domain.models.WorkflowStatus
 import com.example.festivalappmobile.ui.components.WorkflowStatusChip
 import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -394,6 +401,7 @@ fun ReservationDetailScreen(
     if (showContactDialog) {
         var date by remember { mutableStateOf("") }
         var commentaire by remember { mutableStateOf("") }
+        var showContactDatePicker by remember { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { showContactDialog = false },
             title = { Text("Ajouter un contact") },
@@ -401,10 +409,18 @@ fun ReservationDetailScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = date,
-                        onValueChange = { date = it },
-                        label = { Text("Date (AAAA-MM-JJ)") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Date") },
+                        placeholder = { Text("Choisir une date") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Button(
+                        onClick = { showContactDatePicker = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Choisir la date")
+                    }
                     OutlinedTextField(
                         value = commentaire,
                         onValueChange = { commentaire = it },
@@ -414,10 +430,13 @@ fun ReservationDetailScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.addContactEntry(date, commentaire.ifBlank { null })
-                    showContactDialog = false
-                }) {
+                Button(
+                    enabled = date.isNotBlank(),
+                    onClick = {
+                        viewModel.addContactEntry(date, commentaire.ifBlank { null })
+                        showContactDialog = false
+                    }
+                ) {
                     Text("Ajouter")
                 }
             },
@@ -425,6 +444,14 @@ fun ReservationDetailScreen(
                 TextButton(onClick = { showContactDialog = false }) { Text("Annuler") }
             }
         )
+
+        if (showContactDatePicker) {
+            AppDatePickerDialog(
+                initialDate = date,
+                onDismiss = { showContactDatePicker = false },
+                onDateSelected = { selected -> date = selected }
+            )
+        }
     }
 
     if (showLineDialog) {
@@ -644,11 +671,14 @@ fun ReservationDetailScreen(
         var typeReservant by remember(reservation.id) { mutableStateOf(reservation.typeReservant) }
         var typeRemise by remember(reservation.id) { mutableStateOf(reservation.typeRemise) }
 
-        var dateFacturation by remember(reservation.id) { mutableStateOf(reservation.dateFacturation ?: "") }
+        var dateFacturation by remember(reservation.id) {
+            mutableStateOf(normalizeDateString(reservation.dateFacturation))
+        }
         var notesClient by remember(reservation.id) { mutableStateOf(reservation.notesClient ?: "") }
         var notesWorkflow by remember(reservation.id) { mutableStateOf(reservation.notesWorkflow ?: "") }
         var nbPrises by remember(reservation.id) { mutableStateOf(reservation.nbPrisesElectriques.toString()) }
         var valeurRemise by remember(reservation.id) { mutableStateOf(reservation.valeurRemise.toString()) }
+        var showFacturationDatePicker by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = { showEditReservationDialog = false },
@@ -693,10 +723,29 @@ fun ReservationDetailScreen(
                     )
                     OutlinedTextField(
                         value = dateFacturation,
-                        onValueChange = { dateFacturation = it },
-                        label = { Text("Date facturation (AAAA-MM-JJ)") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Date facturation") },
+                        placeholder = { Text("Optionnel") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { showFacturationDatePicker = true },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Choisir date")
+                        }
+                        TextButton(
+                            onClick = { dateFacturation = "" },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Effacer")
+                        }
+                    }
                     OutlinedTextField(
                         value = notesClient,
                         onValueChange = { notesClient = it },
@@ -731,6 +780,14 @@ fun ReservationDetailScreen(
                 TextButton(onClick = { showEditReservationDialog = false }) { Text("Annuler") }
             }
         )
+
+        if (showFacturationDatePicker) {
+            AppDatePickerDialog(
+                initialDate = dateFacturation,
+                onDismiss = { showFacturationDatePicker = false },
+                onDateSelected = { selected -> dateFacturation = selected }
+            )
+        }
     }
 
     if (showDeleteReservationDialog) {
@@ -761,5 +818,66 @@ private fun CheckboxRow(label: String, checked: Boolean, onCheckedChange: (Boole
     Row(verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = checked, onCheckedChange = onCheckedChange)
         Text(label, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun normalizeDateString(rawDate: String?): String {
+    if (rawDate.isNullOrBlank()) return ""
+    return if (rawDate.length >= 10) rawDate.substring(0, 10) else rawDate
+}
+
+private fun dateStringToEpochMillis(dateString: String?): Long? {
+    val normalized = normalizeDateString(dateString)
+    if (normalized.isBlank()) return null
+
+    return try {
+        LocalDate.parse(normalized)
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+    } catch (_: DateTimeParseException) {
+        null
+    }
+}
+
+private fun epochMillisToDateString(epochMillis: Long?): String? {
+    if (epochMillis == null) return null
+    return Instant.ofEpochMilli(epochMillis)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .toString()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppDatePickerDialog(
+    initialDate: String?,
+    onDismiss: () -> Unit,
+    onDateSelected: (String) -> Unit
+) {
+    val pickerState = rememberDatePickerState(
+        initialSelectedDateMillis = dateStringToEpochMillis(initialDate)
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                val selected = epochMillisToDateString(pickerState.selectedDateMillis)
+                if (selected != null) {
+                    onDateSelected(selected)
+                }
+                onDismiss()
+            }) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annuler")
+            }
+        }
+    ) {
+        DatePicker(state = pickerState)
     }
 }
