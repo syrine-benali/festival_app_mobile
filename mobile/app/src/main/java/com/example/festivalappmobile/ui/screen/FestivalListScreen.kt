@@ -5,16 +5,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.festivalappmobile.domain.models.Festival
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
+import com.example.festivalappmobile.ui.viewmodels.FestivalSortOption
 import com.example.festivalappmobile.ui.viewmodels.FestivalUiState
 import java.text.SimpleDateFormat
 import java.util.*
@@ -27,10 +26,38 @@ fun FestivalListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    var showSortMenu by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             @OptIn(ExperimentalMaterial3Api::class)
-            TopAppBar(title = { Text("Festivals") })
+            TopAppBar(
+                title = { Text("Festivals") },
+                actions = {
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.Default.Sort, contentDescription = "Trier")
+                    }
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Plus récents") },
+                            onClick = {
+                                viewModel.setSortOption(FestivalSortOption.LATEST_CREATED)
+                                showSortMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Date de début (croissante)") },
+                            onClick = {
+                                viewModel.setSortOption(FestivalSortOption.DATE_ASC)
+                                showSortMenu = false
+                            }
+                        )
+                    }
+                }
+            )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {

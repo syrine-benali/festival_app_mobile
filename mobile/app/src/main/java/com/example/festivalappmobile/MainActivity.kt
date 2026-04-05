@@ -1,5 +1,6 @@
 package com.example.festivalappmobile
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -159,6 +160,11 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
         android.util.Log.d("MAINSCREEN", "No user logged in")
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = remember {
+        context.getSharedPreferences("festival_prefs", Context.MODE_PRIVATE)
+    }
+
     val festivalRepository = remember {
         val api = RetrofitClient.instance
         FestivalRepositoryImpl(api)
@@ -240,7 +246,7 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             @Suppress("UNCHECKED_CAST")
-                            return FestivalListViewModel(festivalRepository) as T
+                            return FestivalListViewModel(festivalRepository, sharedPrefs) as T
                         }
                     }
                 )
@@ -260,7 +266,7 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             @Suppress("UNCHECKED_CAST")
-                            return FestivalListViewModel(festivalRepository) as T
+                            return FestivalListViewModel(festivalRepository, sharedPrefs) as T
                         }
                     }
                 )
