@@ -5,12 +5,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.festivalappmobile.domain.models.Festival
@@ -30,6 +28,8 @@ fun FestivalDetailScreen(
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val displayFormatter = remember { SimpleDateFormat("d MMM yyyy", Locale.FRANCE) }
     val apiFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE) }
 
@@ -47,6 +47,31 @@ fun FestivalDetailScreen(
         }
     }
 
+    if (showDeleteDialog && festival != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Supprimer le festival") },
+            text = { Text("Êtes-vous sûr de vouloir supprimer le festival \"${festival.nom}\" ? Cette action est irréversible.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteFestival(festivalId)
+                        showDeleteDialog = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Supprimer")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,6 +85,13 @@ fun FestivalDetailScreen(
                     if (festival != null) {
                         IconButton(onClick = { onEditClick(festival.id) }) {
                             Icon(Icons.Default.Edit, contentDescription = "Modifier")
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete, 
+                                contentDescription = "Supprimer",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }

@@ -43,4 +43,14 @@ class FestivalListViewModel(private val repository: FestivalRepository) : ViewMo
             }
         }
     }
+
+    fun deleteFestival(id: Int) {
+        viewModelScope.launch {
+            try {
+                repository.deleteFestival(id)
+            } catch (e: Exception) {
+                // Ignore error in this reactive setup as the list will just not update
+            }
+        }
+    }
 }
