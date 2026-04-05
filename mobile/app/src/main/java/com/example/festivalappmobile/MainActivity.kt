@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -37,16 +38,26 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.festivalappmobile.domain.models.User
+import com.example.festivalappmobile.ui.screen.DashboardScreen
 import com.example.festivalappmobile.ui.screen.LoginScreen
 import com.example.festivalappmobile.ui.screen.RegisterScreen
 import com.example.festivalappmobile.ui.screen.UsersAdminScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
+import com.example.festivalappmobile.data.local.AppDatabase
 import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.data.repository.DashboardCacheRepository
+import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
+import com.example.festivalappmobile.data.repository.JeuRepositoryImpl
+import com.example.festivalappmobile.data.repository.ReservationDashboardRepositoryImpl
+import com.example.festivalappmobile.domain.usecases.editeur.GetEditeursUseCase
 import com.example.festivalappmobile.domain.usecases.festival.GetFestivalsUseCase
+import com.example.festivalappmobile.domain.usecases.jeu.GetJeuxUseCase
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
+import com.example.festivalappmobile.ui.viewmodels.DashboardViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
+import com.example.festivalappmobile.utils.NetworkChecker
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,9 +80,21 @@ fun AppNavigation() {
     var showValidationDialog by remember { mutableStateOf(false) }
     var registeredUserName by remember { mutableStateOf("") }
 
+    // Dépendances partagées pour le mode offline (Room + NetworkChecker)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appDatabase = remember { AppDatabase.getInstance(context) }
+    val networkChecker = remember { NetworkChecker(context) }
+    val dashboardCacheRepo = remember {
+        DashboardCacheRepository(
+            festivalDao = appDatabase.dashboardFestivalDao(),
+            jeuDao      = appDatabase.dashboardJeuDao(),
+            editeurDao  = appDatabase.dashboardEditeurDao()
+        )
+    }
+
     if (showValidationDialog) {
         AlertDialog(
-            onDismissRequest = { 
+            onDismissRequest = {
                 showValidationDialog = false
                 rootNavController.navigate("login") {
                     popUpTo("register") { inclusive = true }
@@ -105,10 +128,13 @@ fun AppNavigation() {
                 },
                 onNavigateToRegister = {
                     rootNavController.navigate("register")
+                },
+                onNavigateToDashboard = {
+                    rootNavController.navigate("dashboard")
                 }
             )
         }
-        
+
         composable("register") {
             RegisterScreen(
                 onRegistrationSuccess = { user ->
@@ -119,13 +145,43 @@ fun AppNavigation() {
                     rootNavController.navigate("login") {
                         popUpTo("register") { inclusive = true }
                     }
+                },
+                onNavigateToDashboard = {
+                    rootNavController.navigate("dashboard")
                 }
             )
         }
-        
+
+        // Dashboard accessible publiquement depuis Login et Register
+        composable("dashboard") {
+            val dashboardViewModel: DashboardViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        val api = RetrofitClient.instance
+                        val festivalRepo = FestivalRepositoryImpl(api)
+                        val jeuRepo = JeuRepositoryImpl(api)
+                        val editeurRepo = EditeurRepositoryImpl(api)
+                        val reservationRepo = ReservationDashboardRepositoryImpl(api)
+                        @Suppress("UNCHECKED_CAST")
+                        return DashboardViewModel(
+                            getFestivalsUseCase = GetFestivalsUseCase(festivalRepo),
+                            getJeuxUseCase = GetJeuxUseCase(jeuRepo),
+                            getEditeursUseCase = GetEditeursUseCase(editeurRepo),
+                            reservationRepo = reservationRepo,
+                            cacheRepo = dashboardCacheRepo,
+                            networkChecker = networkChecker
+                        ) as T
+                    }
+                }
+            )
+            DashboardScreen(viewModel = dashboardViewModel)
+        }
+
         composable("main_screen") {
             MainScreen(
                 user = loggedUser,
+                dashboardCacheRepo = dashboardCacheRepo,
+                networkChecker = networkChecker,
                 onLogout = {
                     loggedUser = null
                     rootNavController.navigate("login") {
@@ -138,12 +194,16 @@ fun AppNavigation() {
 }
 
 @Composable
-fun MainScreen(user: User?, onLogout: () -> Unit) {
+fun MainScreen(
+    user: User?,
+    dashboardCacheRepo: DashboardCacheRepository,
+    networkChecker: NetworkChecker,
+    onLogout: () -> Unit
+) {
     val bottomNavController = rememberNavController()
     val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
-    // Log the user role for debugging
+
     if (user != null) {
         android.util.Log.d("MAINSCREEN", "User logged in - Role: '${user.role}' (ADMIN check: ${user.role == "ADMIN"})")
     } else {
@@ -153,6 +213,19 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
     Scaffold(
         bottomBar = {
             NavigationBar {
+                // Tableau de bord (home)
+                NavigationBarItem(
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Tableau de bord") },
+                    label = { Text("Accueil") },
+                    selected = currentRoute == "dashboard_tab",
+                    onClick = {
+                        bottomNavController.navigate("dashboard_tab") {
+                            popUpTo(bottomNavController.graph.startDestinationId)
+                            launchSingleTop = true
+                        }
+                    }
+                )
+
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.List, contentDescription = "Réservations") },
                     label = { Text("Réservations") },
@@ -164,6 +237,7 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                         }
                     }
                 )
+
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.Star, contentDescription = "Festivals") },
                     label = { Text("Festivals") },
@@ -175,8 +249,8 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                         }
                     }
                 )
-                
-                // Show Users tab only for admins or super-organisateurs
+
+                // Onglet Utilisateurs (admins uniquement)
                 if (user != null && (user.role == "ADMIN" || user.role == "SUPER_ORGANISATEUR")) {
                     NavigationBarItem(
                         icon = { Icon(Icons.Filled.Settings, contentDescription = "Utilisateurs") },
@@ -190,7 +264,7 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                         }
                     )
                 }
-                
+
                 NavigationBarItem(
                     icon = { Icon(Icons.Filled.Person, contentDescription = "Mon Compte") },
                     label = { Text("Mon Compte") },
@@ -207,9 +281,34 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
     ) { innerPadding ->
         NavHost(
             navController = bottomNavController,
-            startDestination = "reservations",
+            startDestination = "dashboard_tab",  // Le dashboard est l'écran d'accueil
             modifier = Modifier.padding(innerPadding)
         ) {
+
+            // Tableau de bord — onglet principal
+            composable("dashboard_tab") {
+                val dashboardViewModel: DashboardViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            val api = RetrofitClient.instance
+                            val festivalRepo = FestivalRepositoryImpl(api)
+                            val jeuRepo = JeuRepositoryImpl(api)
+                            val editeurRepo = EditeurRepositoryImpl(api)
+                            val reservationRepo = ReservationDashboardRepositoryImpl(api)
+                            @Suppress("UNCHECKED_CAST")
+                            return DashboardViewModel(
+                                getFestivalsUseCase = GetFestivalsUseCase(festivalRepo),
+                                getJeuxUseCase = GetJeuxUseCase(jeuRepo),
+                                getEditeursUseCase = GetEditeursUseCase(editeurRepo),
+                                reservationRepo = reservationRepo,
+                                cacheRepo = dashboardCacheRepo,
+                                networkChecker = networkChecker
+                            ) as T
+                        }
+                    }
+                )
+                DashboardScreen(viewModel = dashboardViewModel)
+            }
 
             composable("reservations") {
                 Column(
@@ -220,18 +319,14 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     Text("C'est ici qu'apparaîtra la liste des réservations !")
                 }
             }
-            
+
             composable("festivals") {
                 val viewModel: FestivalListViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            // Manually creating the dependencies of the viewmodel OUTSIDE of it
                             val api = RetrofitClient.instance
                             val repo = FestivalRepositoryImpl(api)
                             val useCase = GetFestivalsUseCase(repo)
-
-                            // creating the view model from factory, with dependency inversion
-                            // This synatx is tedious and would be easier to read/manage with a framework like Hilt/Dagger
                             @Suppress("UNCHECKED_CAST")
                             return FestivalListViewModel(useCase) as T
                         }

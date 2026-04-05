@@ -1,5 +1,6 @@
 [versions]
 agp = "9.0.1"
+ksp = "2.0.21-1.0.28"
 coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -32,4 +33,5 @@ androidx-compose-material = { group = "androidx.wear.compose", name = "compose-m
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 

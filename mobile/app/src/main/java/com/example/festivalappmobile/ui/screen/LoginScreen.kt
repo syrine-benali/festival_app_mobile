@@ -29,7 +29,8 @@ import com.example.festivalappmobile.ui.viewmodels.LoginViewModel
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
     onLoginSuccess: (User) -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onNavigateToDashboard: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -99,6 +100,14 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Pas encore de compte ? S'inscrire")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(
+            onClick = onNavigateToDashboard,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Voir le tableau de bord →")
         }
         
         if (uiState.error != null) {

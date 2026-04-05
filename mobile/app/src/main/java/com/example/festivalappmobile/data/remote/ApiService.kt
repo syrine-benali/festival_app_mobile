@@ -67,4 +67,12 @@ interface ApiService {
 
     @DELETE("api/editeurs/{id}")
     suspend fun deleteEditeur(@Path("id") id: Int): Response<EditeurDeleteResponseDto>
+
+    // GET /api/jeux — liste tous les jeux du catalogue
+    @GET("api/jeux")
+    suspend fun getJeux(): Response<JeuxResponseDto>
+
+    // GET /api/reservations — wrapper correct : { success, data: [...], total, ... }
+    @GET("api/reservations")
+    suspend fun getReservationsWrapped(): Response<ReservationsListResponseDto>
 }

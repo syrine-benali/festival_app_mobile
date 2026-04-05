@@ -39,7 +39,8 @@ import kotlinx.coroutines.delay
 fun RegisterScreen(
     viewModel: RegisterViewModel = viewModel(),
     onRegistrationSuccess: (User) -> Unit,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    onNavigateToDashboard: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -175,6 +176,15 @@ fun RegisterScreen(
             enabled = !uiState.isLoading
         ) {
             Text("Vous avez déjà un compte ? Se connecter")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        TextButton(
+            onClick = onNavigateToDashboard,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+            enabled = !uiState.isLoading
+        ) {
+            Text("Voir le tableau de bord →")
         }
     }
 }
