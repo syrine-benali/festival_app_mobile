@@ -47,9 +47,9 @@ fun ReservationDto.toDomain() = Reservation(
 
 fun ReservationLineDto.toDomain() = ReservationLine(
     id = id,
-    zoneTarifaireId = zoneTarifaireId,
-    zoneTarifaireNom = zoneTarifaire?.nom ?: "Zone $zoneTarifaireId",
-    prixTable = zoneTarifaire?.prixTable ?: 0.0,
+    pricingId = pricingId,
+    pricingLabel = pricing?.nom ?: "Tarif $pricingId",
+    tablePrice = pricing?.prixTable ?: 0.0,
     nbTables = nbTables,
     nbM2 = nbM2,
     grandesTablesSouhaitees = grandesTablesSouhaitees,
@@ -68,8 +68,6 @@ fun ReservationJeuDto.toDomain() = ReservationJeu(
     jeuLibelle = jeu?.libelle ?: "Jeu $jeuId",
     editeurJeuId = editeurJeuId,
     editeurJeuLibelle = editeurJeu?.libelle,
-    zonePlanId = zonePlanId,
-    zonePlanNom = zonePlan?.nom,
     nbExemplaires = nbExemplaires,
     nbTablesAllouees = nbTablesAllouees
 )

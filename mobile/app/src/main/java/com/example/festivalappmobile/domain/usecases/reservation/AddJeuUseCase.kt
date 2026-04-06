@@ -9,7 +9,7 @@ class AddJeuUseCase(private val repo: ReservationRepository) {
         jeuId: Int,
         nbExemplaires: Int,
         nbTablesAllouees: Int,
-        zonePlanId: Int? = null
+        placementId: Int? = null
     ): Result<ReservationJeu> {
         if (nbExemplaires <= 0)
             return Result.failure(Exception("Le nombre d'exemplaires doit être positif"))
@@ -18,6 +18,6 @@ class AddJeuUseCase(private val repo: ReservationRepository) {
         // Règle métier : 1 jeu ne peut pas occuper 2 tables seul
         if (nbTablesAllouees == 2 && nbExemplaires == 1)
             return Result.failure(Exception("Un seul exemplaire ne peut pas occuper 2 tables"))
-        return repo.addJeu(reservationId, jeuId, nbExemplaires, nbTablesAllouees, zonePlanId)
+        return repo.addJeu(reservationId, jeuId, nbExemplaires, nbTablesAllouees, placementId)
     }
 }

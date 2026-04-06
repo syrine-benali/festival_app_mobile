@@ -256,7 +256,7 @@ fun ReservationDetailScreen(
 
                             if (reservation.reservationLines.isEmpty()) {
                                 Text(
-                                    "Aucune zone tarifaire",
+                                    "Aucune ligne tarifaire",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -269,7 +269,7 @@ fun ReservationDetailScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(line.zoneTarifaireNom)
+                                        Text(line.pricingLabel)
                                         Text(
                                             "${line.nbTables} table(s) - ${line.sousTotal}€",
                                             style = MaterialTheme.typography.bodySmall
@@ -338,9 +338,6 @@ fun ReservationDetailScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(jeu.jeuLibelle, style = MaterialTheme.typography.bodyMedium)
-                                        jeu.zonePlanNom?.let {
-                                            Text("Zone : $it", style = MaterialTheme.typography.bodySmall)
-                                        }
                                         Text(
                                             "x${jeu.nbExemplaires} / ${jeu.nbTablesAllouees} table(s)",
                                             style = MaterialTheme.typography.bodySmall
@@ -455,7 +452,7 @@ fun ReservationDetailScreen(
     }
 
     if (showLineDialog) {
-        var zoneTarifaireId by remember { mutableStateOf("") }
+        var pricingIdInput by remember { mutableStateOf("") }
         var nbTables by remember { mutableStateOf("") }
         var grandesTables by remember { mutableStateOf(false) }
 
@@ -465,9 +462,9 @@ fun ReservationDetailScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = zoneTarifaireId,
-                        onValueChange = { zoneTarifaireId = it },
-                        label = { Text("ID zone tarifaire") },
+                        value = pricingIdInput,
+                        onValueChange = { pricingIdInput = it },
+                        label = { Text("ID tarification") },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
@@ -484,14 +481,14 @@ fun ReservationDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val zoneId = zoneTarifaireId.toIntOrNull()
+                        val pricingId = pricingIdInput.toIntOrNull()
                         val tables = nbTables.toIntOrNull()
-                        if (zoneId != null && tables != null) {
-                            viewModel.addLineEntry(zoneId, tables, grandesTables)
+                        if (pricingId != null && tables != null) {
+                            viewModel.addLineEntry(pricingId, tables, grandesTables)
                             showLineDialog = false
                         }
                     },
-                    enabled = zoneTarifaireId.toIntOrNull() != null && nbTables.toIntOrNull() != null
+                    enabled = pricingIdInput.toIntOrNull() != null && nbTables.toIntOrNull() != null
                 ) {
                     Text("Ajouter")
                 }
@@ -554,7 +551,6 @@ fun ReservationDetailScreen(
         var jeuId by remember { mutableStateOf("") }
         var nbExemplaires by remember { mutableStateOf("1") }
         var nbTablesAllouees by remember { mutableStateOf("1") }
-        var zonePlanId by remember { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = { showJeuDialog = false },
@@ -579,12 +575,6 @@ fun ReservationDetailScreen(
                         label = { Text("Tables allouées") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
-                        value = zonePlanId,
-                        onValueChange = { zonePlanId = it },
-                        label = { Text("ID zone plan (optionnel)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             },
             confirmButton = {
@@ -598,7 +588,7 @@ fun ReservationDetailScreen(
                                 jeuId = parsedJeuId,
                                 nbExemplaires = parsedNbExemplaires,
                                 nbTables = parsedNbTables,
-                                zonePlanId = zonePlanId.toIntOrNull()
+                                placementId = null
                             )
                             showJeuDialog = false
                         }
@@ -619,7 +609,6 @@ fun ReservationDetailScreen(
     editingJeu?.let { jeu ->
         var nbExemplaires by remember(jeu.id) { mutableStateOf(jeu.nbExemplaires.toString()) }
         var nbTablesAllouees by remember(jeu.id) { mutableStateOf(jeu.nbTablesAllouees.toString()) }
-        var zonePlanId by remember(jeu.id) { mutableStateOf(jeu.zonePlanId?.toString() ?: "") }
 
         AlertDialog(
             onDismissRequest = { editingJeu = null },
@@ -638,12 +627,6 @@ fun ReservationDetailScreen(
                         label = { Text("Tables allouées") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
-                        value = zonePlanId,
-                        onValueChange = { zonePlanId = it },
-                        label = { Text("ID zone plan (optionnel)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             },
             confirmButton = {
@@ -653,7 +636,7 @@ fun ReservationDetailScreen(
                             jeuId = jeu.id,
                             nbExemplaires = nbExemplaires.toIntOrNull(),
                             nbTables = nbTablesAllouees.toIntOrNull(),
-                            zonePlanId = zonePlanId.toIntOrNull()
+                            placementId = null
                         )
                         editingJeu = null
                     }

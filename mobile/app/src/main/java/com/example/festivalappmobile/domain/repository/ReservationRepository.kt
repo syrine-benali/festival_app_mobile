@@ -51,10 +51,10 @@ interface ReservationRepository {
 
     suspend fun deleteContact(contactId: Int): Result<Unit>
 
-    // Lignes (zones tarifaires)
+    // Lignes tarifaires
     suspend fun addLine(
         reservationId: Int,
-        zoneTarifaireId: Int,
+        pricingId: Int,
         nbTables: Int,
         grandesTablesSouhaitees: Boolean = false
     ): Result<ReservationLine>
@@ -74,14 +74,14 @@ interface ReservationRepository {
         jeuId: Int,
         nbExemplaires: Int,
         nbTablesAllouees: Int,
-        zonePlanId: Int? = null
+        placementId: Int? = null
     ): Result<ReservationJeu>
 
     suspend fun updateJeu(
         jeuId: Int,
         nbExemplaires: Int? = null,
         nbTablesAllouees: Int? = null,
-        zonePlanId: Int? = null
+        placementId: Int? = null
     ): Result<ReservationJeu>
 
     suspend fun deleteJeu(jeuId: Int): Result<Unit>

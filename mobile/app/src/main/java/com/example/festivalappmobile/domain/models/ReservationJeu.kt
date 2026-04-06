@@ -6,8 +6,6 @@ data class ReservationJeu(
     val jeuLibelle: String,
     val editeurJeuId: Int?,
     val editeurJeuLibelle: String?,
-    val zonePlanId: Int?,
-    val zonePlanNom: String?,
     val nbExemplaires: Int,
     val nbTablesAllouees: Int
 )

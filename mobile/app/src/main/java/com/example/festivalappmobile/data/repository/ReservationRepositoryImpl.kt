@@ -173,12 +173,12 @@ class ReservationRepositoryImpl(
     }
 
     override suspend fun addLine(
-        reservationId: Int, zoneTarifaireId: Int,
+        reservationId: Int, pricingId: Int,
         nbTables: Int, grandesTablesSouhaitees: Boolean
     ): Result<ReservationLine> {
         return try {
             val response = api.addLine(reservationId,
-                AddLineRequestDto(zoneTarifaireId, nbTables, grandesTablesSouhaitees))
+                AddLineRequestDto(pricingId, nbTables, grandesTablesSouhaitees))
             if (response.isSuccessful && response.body()?.success == true) {
                 val added = response.body()?.line?.toDomain()
                     ?: return Result.failure(Exception("Ligne non retournée par le serveur"))
@@ -225,11 +225,11 @@ class ReservationRepositoryImpl(
 
     override suspend fun addJeu(
         reservationId: Int, jeuId: Int, nbExemplaires: Int,
-        nbTablesAllouees: Int, zonePlanId: Int?
+        nbTablesAllouees: Int, placementId: Int?
     ): Result<ReservationJeu> {
         return try {
             val response = api.addJeu(reservationId,
-                AddJeuRequestDto(jeuId, nbExemplaires, nbTablesAllouees, zonePlanId))
+                AddJeuRequestDto(jeuId, nbExemplaires, nbTablesAllouees, placementId))
             if (response.isSuccessful && response.body()?.success == true) {
                 val added = response.body()?.jeu?.toDomain()
                     ?: return Result.failure(Exception("Jeu non retourné par le serveur"))
@@ -241,7 +241,7 @@ class ReservationRepositoryImpl(
     }
 
     override suspend fun updateJeu(
-        jeuId: Int, nbExemplaires: Int?, nbTablesAllouees: Int?, zonePlanId: Int?
+        jeuId: Int, nbExemplaires: Int?, nbTablesAllouees: Int?, placementId: Int?
     ): Result<ReservationJeu> {
         return try {
             val response = api.updateJeu(
@@ -249,7 +249,7 @@ class ReservationRepositoryImpl(
                 UpdateJeuRequestDto(
                     nbExemplaires = nbExemplaires,
                     nbTablesAllouees = nbTablesAllouees,
-                    zonePlanId = zonePlanId
+                    placementId = placementId
                 )
             )
             if (response.isSuccessful && response.body()?.success == true) {

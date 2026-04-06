@@ -5,15 +5,15 @@ import com.google.gson.annotations.SerializedName
 
 data class ReservationLineDto(
     @SerializedName("id") val id: Int,
-    @SerializedName("zoneTarifaireId") val zoneTarifaireId: Int,
-    @SerializedName("zoneTarifaire") val zoneTarifaire: ZoneTarifaireDto?,
+    @SerializedName("zoneTarifaireId") val pricingId: Int,
+    @SerializedName("zoneTarifaire") val pricing: PricingDto?,
     @SerializedName("nbTables") val nbTables: Int,
     @SerializedName("nbM2") val nbM2: Double,
     @SerializedName("grandesTablesSouhaitees") val grandesTablesSouhaitees: Boolean,
     @SerializedName("sousTotal") val sousTotal: Double
 )
 
-data class ZoneTarifaireDto(
+data class PricingDto(
     @SerializedName("id") val id: Int,
     @SerializedName("nom") val nom: String,
     @SerializedName("prixTable") val prixTable: Double,
@@ -32,8 +32,8 @@ data class ReservationJeuDto(
     @SerializedName("jeu") val jeu: JeuSimpleDto?,
     @SerializedName("editeurJeuId") val editeurJeuId: Int?,
     @SerializedName("editeurJeu") val editeurJeu: EditeurSimpleDto?,
-    @SerializedName("zonePlanId") val zonePlanId: Int?,
-    @SerializedName("zonePlan") val zonePlan: ZonePlanSimpleDto?,
+    @SerializedName("zonePlanId") val placementId: Int?,
+    @SerializedName("zonePlan") val placement: PlacementDto?,
     @SerializedName("nbExemplaires") val nbExemplaires: Int,
     @SerializedName("nbTablesAllouees") val nbTablesAllouees: Int
 )
@@ -48,7 +48,7 @@ data class EditeurSimpleDto(
     @SerializedName("libelle") val libelle: String
 )
 
-data class ZonePlanSimpleDto(
+data class PlacementDto(
     @SerializedName("id") val id: Int,
     @SerializedName("nom") val nom: String
 )
@@ -146,7 +146,7 @@ data class AddContactResponseDto(
 )
 
 data class AddLineRequestDto(
-    @SerializedName("zoneTarifaireId") val zoneTarifaireId: Int,
+    @SerializedName("zoneTarifaireId") val pricingId: Int,
     @SerializedName("nbTables") val nbTables: Int,
     @SerializedName("grandesTablesSouhaitees") val grandesTablesSouhaitees: Boolean = false
 )
@@ -166,13 +166,13 @@ data class AddJeuRequestDto(
     @SerializedName("jeuId") val jeuId: Int,
     @SerializedName("nbExemplaires") val nbExemplaires: Int,
     @SerializedName("nbTablesAllouees") val nbTablesAllouees: Int,
-    @SerializedName("zonePlanId") val zonePlanId: Int? = null
+    @SerializedName("zonePlanId") val placementId: Int? = null
 )
 
 data class UpdateJeuRequestDto(
     @SerializedName("nbExemplaires") val nbExemplaires: Int? = null,
     @SerializedName("nbTablesAllouees") val nbTablesAllouees: Int? = null,
-    @SerializedName("zonePlanId") val zonePlanId: Int? = null
+    @SerializedName("zonePlanId") val placementId: Int? = null
 )
 
 data class AddJeuResponseDto(

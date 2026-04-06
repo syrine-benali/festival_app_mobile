@@ -135,9 +135,9 @@ class ReservationDetailViewModel(
         }
     }
 
-    fun addJeuEntry(jeuId: Int, nbExemplaires: Int, nbTables: Int, zonePlanId: Int?) {
+    fun addJeuEntry(jeuId: Int, nbExemplaires: Int, nbTables: Int, placementId: Int?) {
         viewModelScope.launch {
-            addJeu(reservationId, jeuId, nbExemplaires, nbTables, zonePlanId)
+            addJeu(reservationId, jeuId, nbExemplaires, nbTables, placementId)
                 .onSuccess {
                     _uiState.update { it.copy(successMessage = "Jeu ajouté") }
                     load()
@@ -146,9 +146,9 @@ class ReservationDetailViewModel(
         }
     }
 
-    fun updateJeuEntry(jeuId: Int, nbExemplaires: Int?, nbTables: Int?, zonePlanId: Int?) {
+    fun updateJeuEntry(jeuId: Int, nbExemplaires: Int?, nbTables: Int?, placementId: Int?) {
         viewModelScope.launch {
-            repo.updateJeu(jeuId, nbExemplaires, nbTables, zonePlanId)
+            repo.updateJeu(jeuId, nbExemplaires, nbTables, placementId)
                 .onSuccess {
                     _uiState.update { it.copy(successMessage = "Jeu mis à jour") }
                     load()
@@ -168,9 +168,9 @@ class ReservationDetailViewModel(
         }
     }
 
-    fun addLineEntry(zoneTarifaireId: Int, nbTables: Int, grandesTablesSouhaitees: Boolean) {
+    fun addLineEntry(pricingId: Int, nbTables: Int, grandesTablesSouhaitees: Boolean) {
         viewModelScope.launch {
-            repo.addLine(reservationId, zoneTarifaireId, nbTables, grandesTablesSouhaitees)
+            repo.addLine(reservationId, pricingId, nbTables, grandesTablesSouhaitees)
                 .onSuccess {
                     _uiState.update { it.copy(successMessage = "Ligne ajoutée") }
                     load()
