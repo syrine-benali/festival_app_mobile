@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -55,6 +56,10 @@ import com.example.festivalappmobile.ui.screen.forms.FestivalFormScreen
 import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
+import com.example.festivalappmobile.domain.usecases.editeur.GetEditeursUseCase
+import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
+import com.example.festivalappmobile.ui.screen.EditeurListScreen
+import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 
@@ -170,6 +175,11 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
         FestivalRepositoryImpl(api)
     }
 
+    val editeurRepository = remember {
+        val api = RetrofitClient.instance
+        EditeurRepositoryImpl(api)
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -190,6 +200,17 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     selected = currentRoute == "festivals",
                     onClick = {
                         bottomNavController.navigate("festivals") {
+                            popUpTo(bottomNavController.graph.startDestinationId)
+                            launchSingleTop = true
+                        }
+                    }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Filled.Business, contentDescription = "Éditeurs") },
+                    label = { Text("Éditeurs") },
+                    selected = currentRoute == "editeurs",
+                    onClick = {
+                        bottomNavController.navigate("editeurs") {
                             popUpTo(bottomNavController.graph.startDestinationId)
                             launchSingleTop = true
                         }
@@ -329,6 +350,18 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                         bottomNavController.popBackStack()
                     }
                 )
+            }
+
+            composable("editeurs") {
+                val viewModel: EditeurListViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return EditeurListViewModel(GetEditeursUseCase(editeurRepository)) as T
+                        }
+                    }
+                )
+                EditeurListScreen(viewModel = viewModel)
             }
 
             composable("users") {
