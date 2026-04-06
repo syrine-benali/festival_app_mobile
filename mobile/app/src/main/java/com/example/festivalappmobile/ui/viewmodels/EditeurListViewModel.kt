@@ -60,4 +60,16 @@ class EditeurListViewModel(
             it.copy(viewMode = if (it.viewMode == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST)
         }
     }
+
+    fun deleteEditeur(id: Int) {
+        viewModelScope.launch {
+            try {
+                repository.deleteEditeur(id)
+                // The list should refresh automatically if deleteEditeur updates the repository flow
+                // But in repository impl, we might need to manually call getAllEditeurs() or emit new state
+            } catch (e: Exception) {
+                // Handle error if needed
+            }
+        }
+    }
 }

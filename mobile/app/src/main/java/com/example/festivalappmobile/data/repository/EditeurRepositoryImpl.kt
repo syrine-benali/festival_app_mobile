@@ -78,7 +78,11 @@ class EditeurRepositoryImpl(private val apiService: ApiService) : EditeurReposit
     override suspend fun deleteEditeur(id: Int): Boolean {
         return try {
             val response = apiService.deleteEditeur(id)
-            response.isSuccessful && (response.body()?.success ?: false)
+            val success = response.isSuccessful && (response.body()?.success ?: false)
+            if (success) {
+                getAllEditeurs()
+            }
+            success
         } catch (e: Exception) {
             false
         }

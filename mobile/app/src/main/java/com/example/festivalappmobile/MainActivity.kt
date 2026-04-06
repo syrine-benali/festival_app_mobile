@@ -58,8 +58,11 @@ import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
 import com.example.festivalappmobile.domain.usecases.editeur.GetEditeursUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.UpdateEditeurUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.GetEditeurByIdUseCase
 import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.ui.screen.EditeurListScreen
+import com.example.festivalappmobile.ui.screen.details.EditeurDetailScreen
 import com.example.festivalappmobile.ui.screen.forms.EditeurFormScreen
 import com.example.festivalappmobile.ui.viewmodels.EditeurFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
@@ -366,7 +369,29 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                 )
                 EditeurListScreen(
                     viewModel = viewModel,
-                    onAddClick = { bottomNavController.navigate("editeur_create") }
+                    onAddClick = { bottomNavController.navigate("editeur_create") },
+                    onEditeurClick = { id -> bottomNavController.navigate("editeur_detail/$id") }
+                )
+            }
+
+            composable(
+                route = "editeur_detail/{editeurId}",
+                arguments = listOf(navArgument("editeurId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val editeurId = backStackEntry.arguments?.getInt("editeurId") ?: return@composable
+                val viewModel: EditeurListViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return EditeurListViewModel(editeurRepository) as T
+                        }
+                    }
+                )
+                EditeurDetailScreen(
+                    editeurId = editeurId,
+                    viewModel = viewModel,
+                    onNavigateBack = { bottomNavController.popBackStack() },
+                    onEditClick = { id -> bottomNavController.navigate("editeur_edit/$id") }
                 )
             }
 
@@ -375,12 +400,47 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             @Suppress("UNCHECKED_CAST")
-                            return EditeurFormViewModel(CreateEditeurUseCase(editeurRepository)) as T
+                            return EditeurFormViewModel(
+                                GetEditeurByIdUseCase(editeurRepository),
+                                CreateEditeurUseCase(editeurRepository),
+                                UpdateEditeurUseCase(editeurRepository)
+                            ) as T
                         }
                     }
                 )
                 EditeurFormScreen(
                     viewModel = viewModel,
+                    onNavigateBack = { bottomNavController.popBackStack() },
+                    onSuccess = { 
+                        bottomNavController.popBackStack()
+                    }
+                )
+            }
+
+            composable(
+                route = "editeur_edit/{editeurId}",
+                arguments = listOf(navArgument("editeurId") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val editeurId = backStackEntry.arguments?.getInt("editeurId") ?: return@composable
+                val viewModelBase: EditeurFormViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return EditeurFormViewModel(
+                                GetEditeurByIdUseCase(editeurRepository),
+                                CreateEditeurUseCase(editeurRepository),
+                                UpdateEditeurUseCase(editeurRepository)
+                            ) as T
+                        }
+                    }
+                )
+                
+                LaunchedEffect(editeurId) {
+                    viewModelBase.loadEditeur(editeurId)
+                }
+
+                EditeurFormScreen(
+                    viewModel = viewModelBase,
                     onNavigateBack = { bottomNavController.popBackStack() },
                     onSuccess = { 
                         bottomNavController.popBackStack()

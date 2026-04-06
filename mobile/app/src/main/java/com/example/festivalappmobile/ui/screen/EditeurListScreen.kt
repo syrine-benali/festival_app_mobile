@@ -29,7 +29,8 @@ import com.example.festivalappmobile.ui.viewmodels.ViewMode
 @Composable
 fun EditeurListScreen(
     viewModel: EditeurListViewModel,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onEditeurClick: (Int) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -80,9 +81,9 @@ fun EditeurListScreen(
                         )
                     } else {
                         if (state.viewMode == ViewMode.LIST) {
-                            EditeurListView(uiState.editeurs)
+                            EditeurListView(uiState.editeurs, onEditeurClick)
                         } else {
-                            EditeurGridView(uiState.editeurs)
+                            EditeurGridView(uiState.editeurs, onEditeurClick)
                         }
                     }
                 }
@@ -92,20 +93,20 @@ fun EditeurListScreen(
 }
 
 @Composable
-fun EditeurListView(editeurs: List<Editeur>) {
+fun EditeurListView(editeurs: List<Editeur>, onEditeurClick: (Int) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(editeurs) { editeur ->
-            EditeurListItem(editeur)
+            EditeurListItem(editeur, onClick = { onEditeurClick(editeur.id) })
         }
     }
 }
 
 @Composable
-fun EditeurGridView(editeurs: List<Editeur>) {
+fun EditeurGridView(editeurs: List<Editeur>, onEditeurClick: (Int) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
@@ -114,16 +115,17 @@ fun EditeurGridView(editeurs: List<Editeur>) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(editeurs) { editeur ->
-            EditeurGridItem(editeur)
+            EditeurGridItem(editeur, onClick = { onEditeurClick(editeur.id) })
         }
     }
 }
 
 @Composable
-fun EditeurListItem(editeur: Editeur) {
+fun EditeurListItem(editeur: Editeur, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -160,10 +162,11 @@ fun EditeurListItem(editeur: Editeur) {
 }
 
 @Composable
-fun EditeurGridItem(editeur: Editeur) {
+fun EditeurGridItem(editeur: Editeur, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier.padding(12.dp),

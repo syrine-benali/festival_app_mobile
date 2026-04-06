@@ -5,13 +5,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.festivalappmobile.data.remote.dto.EditeurCreateRequestDto
+import com.example.festivalappmobile.data.remote.dto.EditeurUpdateRequestDto
 import com.example.festivalappmobile.domain.models.Editeur
 import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.GetEditeurByIdUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.UpdateEditeurUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 data class EditeurFormState(
+    val id: Int? = null,
     val libelle: String = "",
     val phone: String = "",
     val email: String = "",
@@ -40,7 +44,9 @@ sealed class EditeurFormUiEvent {
 }
 
 class EditeurFormViewModel(
-    private val createEditeurUseCase: CreateEditeurUseCase
+    private val getEditeurByIdUseCase: GetEditeurByIdUseCase,
+    private val createEditeurUseCase: CreateEditeurUseCase,
+    private val updateEditeurUseCase: UpdateEditeurUseCase
 ) : ViewModel() {
 
     private val _state = mutableStateOf(EditeurFormState())
@@ -48,6 +54,32 @@ class EditeurFormViewModel(
 
     private val _eventFlow = MutableSharedFlow<EditeurFormEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
+
+    fun loadEditeur(id: Int) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, error = null)
+            try {
+                val editeur = getEditeurByIdUseCase(id)
+                if (editeur != null) {
+                    _state.value = _state.value.copy(
+                        id = editeur.id,
+                        libelle = editeur.libelle,
+                        phone = editeur.phone ?: "",
+                        email = editeur.email ?: "",
+                        logo = editeur.logo ?: "",
+                        notes = editeur.notes ?: "",
+                        exposant = editeur.exposant,
+                        distributeur = editeur.distributeur,
+                        isLoading = false
+                    )
+                } else {
+                    _state.value = _state.value.copy(isLoading = false, error = "Éditeur non trouvé")
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(isLoading = false, error = e.message ?: "Une erreur est survenue")
+            }
+        }
+    }
 
     fun onEvent(event: EditeurFormUiEvent) {
         when (event) {
@@ -87,22 +119,35 @@ class EditeurFormViewModel(
 
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                val result = createEditeurUseCase(
-                    EditeurCreateRequestDto(
-                        libelle = _state.value.libelle,
-                        phone = _state.value.phone.ifBlank { null },
-                        email = _state.value.email.ifBlank { null },
-                        logo = _state.value.logo.ifBlank { null },
-                        notes = _state.value.notes.ifBlank { null },
-                        exposant = _state.value.exposant,
-                        distributeur = _state.value.distributeur
+                val id = _state.value.id
+                val result: Editeur? = if (id == null) {
+                    createEditeurUseCase(
+                        EditeurCreateRequestDto(
+                            libelle = _state.value.libelle,
+                            phone = _state.value.phone.ifBlank { null },
+                            email = _state.value.email.ifBlank { null },
+                            logo = _state.value.logo.ifBlank { null },
+                            notes = _state.value.notes.ifBlank { null },
+                            exposant = _state.value.exposant,
+                            distributeur = _state.value.distributeur
+                        )
                     )
-                )
+                } else {
+                    updateEditeurUseCase(
+                        id,
+                        EditeurUpdateRequestDto(
+                            phone = _state.value.phone.ifBlank { null },
+                            email = _state.value.email.ifBlank { null },
+                            logo = _state.value.logo.ifBlank { null },
+                            notes = _state.value.notes.ifBlank { null }
+                        )
+                    )
+                }
 
                 if (result != null) {
                     _eventFlow.emit(EditeurFormEvent.Success)
                 } else {
-                    _state.value = _state.value.copy(isLoading = false, error = "Erreur lors de la création de l'éditeur")
+                    _state.value = _state.value.copy(isLoading = false, error = "Erreur lors de l'enregistrement")
                 }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isLoading = false, error = e.message ?: "Une erreur est survenue")
