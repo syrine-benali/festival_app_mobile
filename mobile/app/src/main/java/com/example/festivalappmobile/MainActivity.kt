@@ -57,8 +57,11 @@ import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
 import com.example.festivalappmobile.domain.usecases.editeur.GetEditeursUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
 import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.ui.screen.EditeurListScreen
+import com.example.festivalappmobile.ui.screen.forms.EditeurFormScreen
+import com.example.festivalappmobile.ui.viewmodels.EditeurFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -361,7 +364,28 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                         }
                     }
                 )
-                EditeurListScreen(viewModel = viewModel)
+                EditeurListScreen(
+                    viewModel = viewModel,
+                    onAddClick = { bottomNavController.navigate("editeur_create") }
+                )
+            }
+
+            composable("editeur_create") {
+                val viewModel: EditeurFormViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return EditeurFormViewModel(CreateEditeurUseCase(editeurRepository)) as T
+                        }
+                    }
+                )
+                EditeurFormScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { bottomNavController.popBackStack() },
+                    onSuccess = { 
+                        bottomNavController.popBackStack()
+                    }
+                )
             }
 
             composable("users") {

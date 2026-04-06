@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Business
@@ -27,7 +28,8 @@ import com.example.festivalappmobile.ui.viewmodels.ViewMode
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditeurListScreen(
-    viewModel: EditeurListViewModel
+    viewModel: EditeurListViewModel,
+    onAddClick: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -44,6 +46,14 @@ fun EditeurListScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onAddClick) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.Add,
+                    contentDescription = "Ajouter un éditeur"
+                )
+            }
         }
     ) { paddingValues ->
         Box(
