@@ -3,7 +3,6 @@ package com.example.festivalappmobile.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.festivalappmobile.domain.models.Editeur
-import com.example.festivalappmobile.domain.usecases.editeur.GetEditeursUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,22 +25,30 @@ data class EditeurListState(
 )
 
 class EditeurListViewModel(
-    private val getEditeursUseCase: GetEditeursUseCase
+    private val repository: com.example.festivalappmobile.domain.repository.EditeurRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(EditeurListState())
     val state: StateFlow<EditeurListState> = _state.asStateFlow()
 
     init {
+        observeEditeurs()
         loadEditeurs()
     }
 
+    private fun observeEditeurs() {
+        viewModelScope.launch {
+            repository.editeurs.collect { editeurs ->
+                _state.update { it.copy(uiState = EditeurUiState.Success(editeurs)) }
+            }
+        }
+    }
+
     fun loadEditeurs() {
-        _state.update { it.copy(uiState = EditeurUiState.Loading) }
+        // We only trigger the loading, the observation handles the UI update
         viewModelScope.launch {
             try {
-                val editeurs = getEditeursUseCase()
-                _state.update { it.copy(uiState = EditeurUiState.Success(editeurs)) }
+                repository.getAllEditeurs()
             } catch (e: Exception) {
                 _state.update { it.copy(uiState = EditeurUiState.Error(e.message ?: "Une erreur est survenue")) }
             }

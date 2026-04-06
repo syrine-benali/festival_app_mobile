@@ -360,7 +360,7 @@ fun MainScreen(user: User?, onLogout: () -> Unit) {
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
                             @Suppress("UNCHECKED_CAST")
-                            return EditeurListViewModel(GetEditeursUseCase(editeurRepository)) as T
+                            return EditeurListViewModel(editeurRepository) as T
                         }
                     }
                 )

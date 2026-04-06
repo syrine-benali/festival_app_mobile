@@ -33,12 +33,14 @@ data class EditeurCreateRequestDto(
     val distributeur: Boolean? = null,
     val phone: String? = null,
     val email: String? = null,
+    val logo: String? = null,
     val notes: String? = null
 )
 
 data class EditeurUpdateRequestDto(
     val phone: String? = null,
     val email: String? = null,
+    val logo: String? = null,
     val notes: String? = null
 )
 

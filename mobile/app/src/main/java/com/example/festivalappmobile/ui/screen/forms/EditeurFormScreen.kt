@@ -90,6 +90,14 @@ fun EditeurFormScreen(
             )
 
             OutlinedTextField(
+                value = state.logo,
+                onValueChange = { viewModel.onEvent(EditeurFormUiEvent.EnteredLogo(it)) },
+                label = { Text("URL du Logo") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+            )
+
+            OutlinedTextField(
                 value = state.notes,
                 onValueChange = { viewModel.onEvent(EditeurFormUiEvent.EnteredNotes(it)) },
                 label = { Text("Notes supplémentaires") },
