@@ -175,7 +175,7 @@ private fun AppShell(
             AppTab(route = "mon-compte", label = "Mon compte", icon = Icons.Default.AccountCircle)
         )
     }
-    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
+    val navBackStackEntry by appNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     LaunchedEffect(currentRoute) {
@@ -257,8 +257,8 @@ private fun AppShell(
                         NavigationRailItem(
                             selected = selected,
                             onClick = {
-                                bottomNavController.navigate(tab.route) {
-                                    popUpTo(bottomNavController.graph.startDestinationId) {
+                                appNavController.navigate(tab.route) {
+                                    popUpTo(appNavController.graph.startDestinationId) {
                                         saveState = true
                                     }
                                     launchSingleTop = true
@@ -286,7 +286,7 @@ private fun AppShell(
                 .fillMaxHeight()
         ) {
             NavHost(
-                navController = bottomNavController,
+                navController = appNavController,
                 startDestination = "festivals"
             ) {
                 composable("reservations") {
@@ -296,7 +296,7 @@ private fun AppShell(
                     ReservationListScreen(
                         viewModel = vm,
                         onReservationClick = { id ->
-                            bottomNavController.navigate("reservation/$id")
+                            appNavController.navigate("reservation/$id")
                         }
                     )
                 }
@@ -312,7 +312,7 @@ private fun AppShell(
                     )
                     ReservationDetailScreen(
                         viewModel = vm,
-                        onBack = { bottomNavController.popBackStack() }
+                        onBack = { appNavController.popBackStack() }
                     )
                 }
 
@@ -327,8 +327,8 @@ private fun AppShell(
                     )
                     FestivalListScreen(
                         viewModel = viewModel,
-                        onAddClick = { bottomNavController.navigate("festival_create") },
-                        onFestivalClick = { id -> bottomNavController.navigate("festival_detail/$id") }
+                        onAddClick = { appNavController.navigate("festival_create") },
+                        onFestivalClick = { id -> appNavController.navigate("festival_detail/$id") }
                     )
                 }
 
@@ -348,8 +348,8 @@ private fun AppShell(
                     FestivalDetailScreen(
                         festivalId = festivalId,
                         viewModel = viewModel,
-                        onNavigateBack = { bottomNavController.popBackStack() },
-                        onEditClick = { id -> bottomNavController.navigate("festival_edit/$id") }
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onEditClick = { id -> appNavController.navigate("festival_edit/$id") }
                     )
                 }
 
@@ -364,8 +364,8 @@ private fun AppShell(
                     )
                     EditeurListScreen(
                         viewModel = viewModel,
-                        onAddClick = { bottomNavController.navigate("editeur_create") },
-                        onEditeurClick = { id -> bottomNavController.navigate("editeur_detail/$id") }
+                        onAddClick = { appNavController.navigate("editeur_create") },
+                        onEditeurClick = { id -> appNavController.navigate("editeur_detail/$id") }
                     )
                 }
 
@@ -385,8 +385,8 @@ private fun AppShell(
                     EditeurDetailScreen(
                         editeurId = editeurId,
                         viewModel = viewModel,
-                        onNavigateBack = { bottomNavController.popBackStack() },
-                        onEditClick = { id -> bottomNavController.navigate("editeur_edit/$id") }
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onEditClick = { id -> appNavController.navigate("editeur_edit/$id") }
                     )
                 }
 
@@ -405,9 +405,9 @@ private fun AppShell(
                     )
                     EditeurFormScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onNavigateBack = { appNavController.popBackStack() },
                         onSuccess = { 
-                            bottomNavController.popBackStack()
+                            appNavController.popBackStack()
                         }
                     )
                 }
@@ -436,9 +436,9 @@ private fun AppShell(
 
                     EditeurFormScreen(
                         viewModel = viewModelBase,
-                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onNavigateBack = { appNavController.popBackStack() },
                         onSuccess = { 
-                            bottomNavController.popBackStack()
+                            appNavController.popBackStack()
                         }
                     )
                 }
@@ -458,9 +458,9 @@ private fun AppShell(
                     )
                     FestivalFormScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onNavigateBack = { appNavController.popBackStack() },
                         onSuccess = { 
-                            bottomNavController.popBackStack()
+                            appNavController.popBackStack()
                         }
                     )
                 }
@@ -489,9 +489,9 @@ private fun AppShell(
 
                     FestivalFormScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onNavigateBack = { appNavController.popBackStack() },
                         onSuccess = { 
-                            bottomNavController.popBackStack()
+                            appNavController.popBackStack()
                         }
                     )
                 }
