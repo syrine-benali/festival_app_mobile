@@ -2,6 +2,7 @@ package com.example.festivalappmobile.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.festivalappmobile.data.local.TokenManager
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.domain.repository.AuthRepositoryImpl
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
-class LoginViewModel : ViewModel() {
+class LoginViewModel (private val tokenManager: TokenManager? = null) : ViewModel() {
 
     private val loginUseCase = LoginUseCase(
         AuthRepositoryImpl(RetrofitClient.instance)
@@ -30,20 +31,15 @@ class LoginViewModel : ViewModel() {
     fun login() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-
-            android.util.Log.d("LOGIN", "Tentative avec : ${uiState.value.email}")
-
             loginUseCase(uiState.value.email, uiState.value.password)
                 .onSuccess { user ->
-                    android.util.Log.d("LOGIN", "Succès ! User : ${user.email}")
-                    android.util.Log.d("LOGIN", "User Role: '${user.role}' (length: ${user.role.length})")
-                    android.util.Log.d("LOGIN", "User Valide: ${user.valide}")
+                    // Sauvegarder le token si disponible
+                    // Note: votre API utilise des cookies httpOnly, donc le token
+                    // est géré automatiquement par le cookie jar
                     _uiState.update { it.copy(isLoading = false, isSuccess = true, user = user) }
                 }
                 .onFailure { e ->
-                    android.util.Log.e("LOGIN", "Erreur : ${e.message}")
-                    val errorMessage = ErrorHandler.parseErrorMessage(e.message)
-                    _uiState.update { it.copy(isLoading = false, error = errorMessage) }
+                    _uiState.update { it.copy(isLoading = false, error = e.message) }
                 }
         }
     }

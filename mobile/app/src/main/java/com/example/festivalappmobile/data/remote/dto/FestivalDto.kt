@@ -14,7 +14,22 @@ data class FestivalDto(
     val smallTables: Int? = 0,
     val smallChairs: Int? = 0,
     val mairieTables: Int? = 0,
-    val mairieChairs: Int? = 0
+    val mairieChairs: Int? = 0,
+    val zoneTarifaires: List<FestivalZoneTarifaireDto> = emptyList()
+)
+
+data class FestivalZoneTarifaireDto(
+    val id: Int,
+    val nom: String,
+    val prixTable: Double,
+    val prixM2: Double,
+    val festivalId: Int? = null
+)
+
+data class AddZoneTarifaireRequestDto(
+    val nom: String,
+    val prixTable: Double,
+    val prixM2: Double
 )
 
 data class FestivalCreateRequestDto(

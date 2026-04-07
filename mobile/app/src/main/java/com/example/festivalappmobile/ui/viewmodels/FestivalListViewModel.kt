@@ -2,9 +2,13 @@ package com.example.festivalappmobile.ui.viewmodels
 
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
 import com.example.festivalappmobile.domain.models.Festival
 import com.example.festivalappmobile.domain.repository.FestivalRepository
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -100,4 +104,6 @@ class FestivalListViewModel(
             }
         }
     }
+
+
 }

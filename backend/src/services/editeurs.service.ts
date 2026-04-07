@@ -14,7 +14,7 @@ export interface EditeurListItem {
   hasReservation: boolean;
 }
 
-export interface EditeurDetail extends EditeurListItem { }
+export interface EditeurDetail extends EditeurListItem {}
 
 export interface EditeurUpdateRequest {
   phone?: string;
@@ -141,25 +141,25 @@ export class EditeursService {
         phone: true,
         email: true,
         notes: true,
-        reservations: {
-          select: {
-            workflowStatus: true,
-            updatedAt: true,
+          reservations: {
+            select: {
+              workflowStatus: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 1,
           },
-          orderBy: { updatedAt: 'desc' },
-          take: 1,
-        },
       },
     });
 
     return {
       success: true,
       message: 'Éditeur mis à jour avec succès',
-      editeur: {
-        ...updatedEditeur,
-        workflowStatus: updatedEditeur.reservations[0]?.workflowStatus ?? null,
-        hasReservation: updatedEditeur.reservations.length > 0,
-      },
+        editeur: {
+          ...updatedEditeur,
+          workflowStatus: updatedEditeur.reservations[0]?.workflowStatus ?? null,
+          hasReservation: updatedEditeur.reservations.length > 0,
+        },
     };
   }
 
