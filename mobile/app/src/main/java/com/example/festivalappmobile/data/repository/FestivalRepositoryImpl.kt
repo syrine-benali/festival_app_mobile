@@ -6,14 +6,22 @@ import com.example.festivalappmobile.data.remote.dto.FestivalUpdateRequestDto
 import com.example.festivalappmobile.data.remote.mapper.toDomain
 import com.example.festivalappmobile.domain.models.Festival
 import com.example.festivalappmobile.domain.repository.FestivalRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class FestivalRepositoryImpl(private val apiService: ApiService) : FestivalRepository {
+
+    private val _festivals = MutableStateFlow<List<Festival>>(emptyList())
+    override val festivals: StateFlow<List<Festival>> = _festivals.asStateFlow()
 
     override suspend fun getFestivals(): List<Festival> {
         return try {
             val response = apiService.getFestivals()
             if (response.isSuccessful) {
-                response.body()?.map { it.toDomain() } ?: emptyList()
+                val list = response.body()?.map { it.toDomain() } ?: emptyList()
+                _festivals.value = list
+                list
             } else {
                 emptyList()
             }
@@ -39,7 +47,11 @@ class FestivalRepositoryImpl(private val apiService: ApiService) : FestivalRepos
         return try {
             val response = apiService.createFestival(request)
             if (response.isSuccessful) {
-                response.body()?.toDomain()
+                val result = response.body()?.toDomain()
+                if (result != null) {
+                    getFestivals() // Trigger refresh
+                }
+                result
             } else {
                 null
             }
@@ -52,7 +64,11 @@ class FestivalRepositoryImpl(private val apiService: ApiService) : FestivalRepos
         return try {
             val response = apiService.updateFestival(id, request)
             if (response.isSuccessful) {
-                response.body()?.toDomain()
+                val result = response.body()?.toDomain()
+                if (result != null) {
+                    getFestivals() // Trigger refresh
+                }
+                result
             } else {
                 null
             }
@@ -64,7 +80,12 @@ class FestivalRepositoryImpl(private val apiService: ApiService) : FestivalRepos
     override suspend fun deleteFestival(id: Int): Boolean {
         return try {
             val response = apiService.deleteFestival(id)
-            response.isSuccessful
+            if (response.isSuccessful) {
+                getFestivals() // Trigger refresh
+                true
+            } else {
+                false
+            }
         } catch (e: Exception) {
             false
         }
