@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,19 +31,30 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.festivalappmobile.data.local.TokenManager
 import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
+import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
+import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.GetEditeurByIdUseCase
+import com.example.festivalappmobile.domain.usecases.editeur.UpdateEditeurUseCase
+import com.example.festivalappmobile.domain.usecases.festival.CreateFestivalUseCase
+import com.example.festivalappmobile.domain.usecases.festival.GetFestivalByIdUseCase
+import com.example.festivalappmobile.domain.usecases.festival.UpdateFestivalUseCase
 import com.example.festivalappmobile.ui.screen.EditeurListScreen
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.screen.LoginScreen
@@ -51,24 +62,18 @@ import com.example.festivalappmobile.ui.screen.RegisterScreen
 import com.example.festivalappmobile.ui.screen.ReservationDetailScreen
 import com.example.festivalappmobile.ui.screen.ReservationListScreen
 import com.example.festivalappmobile.ui.screen.UsersAdminScreen
-import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
-import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
-import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
-import com.example.festivalappmobile.domain.usecases.festival.CreateFestivalUseCase
-import com.example.festivalappmobile.domain.usecases.festival.GetFestivalByIdUseCase
-
-import com.example.festivalappmobile.domain.usecases.festival.UpdateFestivalUseCase
+import com.example.festivalappmobile.ui.screen.details.EditeurDetailScreen
 import com.example.festivalappmobile.ui.screen.details.FestivalDetailScreen
+import com.example.festivalappmobile.ui.screen.forms.EditeurFormScreen
 import com.example.festivalappmobile.ui.screen.forms.FestivalFormScreen
+import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
+import com.example.festivalappmobile.ui.viewmodels.EditeurFormViewModel
+import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
 
 private data class AppTab(
     val route: String,
@@ -95,7 +100,6 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         startDestination = "login"
                     ) {
-
                         composable("login") {
                             LoginScreen(
                                 onLoginSuccess = {
@@ -134,7 +138,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppShell(context: Context) {
-    val appNavController = rememberNavController()
+    val bottomNavController = rememberNavController()
     val screenWidth = LocalConfiguration.current.screenWidthDp
     var isSidebarExpanded by rememberSaveable { mutableStateOf(screenWidth >= 600) }
     val sidebarWidth by animateDpAsState(
@@ -146,12 +150,12 @@ private fun AppShell(context: Context) {
     val tabs = remember {
         listOf(
             AppTab(route = "festivals", label = "Festivals", icon = Icons.Default.Event),
-            AppTab(route = "editeurs", label = "Editeurs", icon = Icons.Default.Storefront),
+            AppTab(route = "editeurs", label = "Editeurs", icon = Icons.Default.Business),
             AppTab(route = "reservations", label = "Reservations", icon = Icons.Default.TableRestaurant),
             AppTab(route = "users-management", label = "Users", icon = Icons.Default.Groups)
         )
     }
-    val navBackStackEntry by appNavController.currentBackStackEntryAsState()
+    val navBackStackEntry by bottomNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     LaunchedEffect(currentRoute) {
@@ -172,6 +176,11 @@ private fun AppShell(context: Context) {
     val festivalRepository = remember {
         val api = RetrofitClient.instance
         FestivalRepositoryImpl(api)
+    }
+
+    val editeurRepository = remember {
+        val api = RetrofitClient.instance
+        EditeurRepositoryImpl(api)
     }
 
     Row(
@@ -228,8 +237,8 @@ private fun AppShell(context: Context) {
                         NavigationRailItem(
                             selected = selected,
                             onClick = {
-                                appNavController.navigate(tab.route) {
-                                    popUpTo(appNavController.graph.startDestinationId) {
+                                bottomNavController.navigate(tab.route) {
+                                    popUpTo(bottomNavController.graph.startDestinationId) {
                                         saveState = true
                                     }
                                     launchSingleTop = true
@@ -257,7 +266,7 @@ private fun AppShell(context: Context) {
                 .fillMaxHeight()
         ) {
             NavHost(
-                navController = appNavController,
+                navController = bottomNavController,
                 startDestination = "festivals"
             ) {
                 composable("reservations") {
@@ -267,7 +276,7 @@ private fun AppShell(context: Context) {
                     ReservationListScreen(
                         viewModel = vm,
                         onReservationClick = { id ->
-                            appNavController.navigate("reservation/$id")
+                            bottomNavController.navigate("reservation/$id")
                         }
                     )
                 }
@@ -283,14 +292,8 @@ private fun AppShell(context: Context) {
                     )
                     ReservationDetailScreen(
                         viewModel = vm,
-                        onBack = { appNavController.popBackStack() }
+                        onBack = { bottomNavController.popBackStack() }
                     )
-                }
-                composable("editeurs") {
-                    val vm: EditeurListViewModel = viewModel(
-                        factory = EditeurListViewModel.factory()
-                    )
-                    EditeurListScreen(viewModel = vm)
                 }
 
                 composable("festivals") {
@@ -304,8 +307,8 @@ private fun AppShell(context: Context) {
                     )
                     FestivalListScreen(
                         viewModel = viewModel,
-                        onAddClick = { appNavController.navigate("festival_create") },
-                        onFestivalClick = { id -> appNavController.navigate("festival_detail/$id") }
+                        onAddClick = { bottomNavController.navigate("festival_create") },
+                        onFestivalClick = { id -> bottomNavController.navigate("festival_detail/$id") }
                     )
                 }
 
@@ -325,8 +328,98 @@ private fun AppShell(context: Context) {
                     FestivalDetailScreen(
                         festivalId = festivalId,
                         viewModel = viewModel,
-                        onNavigateBack = { appNavController.popBackStack() },
-                        onEditClick = { id -> appNavController.navigate("festival_edit/$id") }
+                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onEditClick = { id -> bottomNavController.navigate("festival_edit/$id") }
+                    )
+                }
+
+                composable("editeurs") {
+                    val viewModel: EditeurListViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return EditeurListViewModel(editeurRepository) as T
+                            }
+                        }
+                    )
+                    EditeurListScreen(
+                        viewModel = viewModel,
+                        onAddClick = { bottomNavController.navigate("editeur_create") },
+                        onEditeurClick = { id -> bottomNavController.navigate("editeur_detail/$id") }
+                    )
+                }
+
+                composable(
+                    route = "editeur_detail/{editeurId}",
+                    arguments = listOf(navArgument("editeurId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val editeurId = backStackEntry.arguments?.getInt("editeurId") ?: return@composable
+                    val viewModel: EditeurListViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return EditeurListViewModel(editeurRepository) as T
+                            }
+                        }
+                    )
+                    EditeurDetailScreen(
+                        editeurId = editeurId,
+                        viewModel = viewModel,
+                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onEditClick = { id -> bottomNavController.navigate("editeur_edit/$id") }
+                    )
+                }
+
+                composable("editeur_create") {
+                    val viewModel: EditeurFormViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return EditeurFormViewModel(
+                                    GetEditeurByIdUseCase(editeurRepository),
+                                    CreateEditeurUseCase(editeurRepository),
+                                    UpdateEditeurUseCase(editeurRepository)
+                                ) as T
+                            }
+                        }
+                    )
+                    EditeurFormScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onSuccess = { 
+                            bottomNavController.popBackStack()
+                        }
+                    )
+                }
+
+                composable(
+                    route = "editeur_edit/{editeurId}",
+                    arguments = listOf(navArgument("editeurId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val editeurId = backStackEntry.arguments?.getInt("editeurId") ?: return@composable
+                    val viewModelBase: EditeurFormViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return EditeurFormViewModel(
+                                    GetEditeurByIdUseCase(editeurRepository),
+                                    CreateEditeurUseCase(editeurRepository),
+                                    UpdateEditeurUseCase(editeurRepository)
+                                ) as T
+                            }
+                        }
+                    )
+                    
+                    LaunchedEffect(editeurId) {
+                        viewModelBase.loadEditeur(editeurId)
+                    }
+
+                    EditeurFormScreen(
+                        viewModel = viewModelBase,
+                        onNavigateBack = { bottomNavController.popBackStack() },
+                        onSuccess = { 
+                            bottomNavController.popBackStack()
+                        }
                     )
                 }
 
@@ -345,9 +438,9 @@ private fun AppShell(context: Context) {
                     )
                     FestivalFormScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { appNavController.popBackStack() },
+                        onNavigateBack = { bottomNavController.popBackStack() },
                         onSuccess = { 
-                            appNavController.popBackStack()
+                            bottomNavController.popBackStack()
                         }
                     )
                 }
@@ -376,9 +469,9 @@ private fun AppShell(context: Context) {
 
                     FestivalFormScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { appNavController.popBackStack() },
+                        onNavigateBack = { bottomNavController.popBackStack() },
                         onSuccess = { 
-                            appNavController.popBackStack()
+                            bottomNavController.popBackStack()
                         }
                     )
                 }
