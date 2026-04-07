@@ -25,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,10 +53,22 @@ import com.example.festivalappmobile.ui.screen.ReservationListScreen
 import com.example.festivalappmobile.ui.screen.UsersAdminScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
 import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
+import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
+import com.example.festivalappmobile.domain.usecases.festival.CreateFestivalUseCase
+import com.example.festivalappmobile.domain.usecases.festival.GetFestivalByIdUseCase
+
+import com.example.festivalappmobile.domain.usecases.festival.UpdateFestivalUseCase
+import com.example.festivalappmobile.ui.screen.details.FestivalDetailScreen
+import com.example.festivalappmobile.ui.screen.forms.FestivalFormScreen
+import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 private data class AppTab(
     val route: String,
@@ -150,6 +163,15 @@ private fun AppShell(context: Context) {
                 }
             }
         }
+    }
+
+    val sharedPrefs = remember {
+        context.getSharedPreferences("festival_prefs", Context.MODE_PRIVATE)
+    }
+
+    val festivalRepository = remember {
+        val api = RetrofitClient.instance
+        FestivalRepositoryImpl(api)
     }
 
     Row(
@@ -264,7 +286,6 @@ private fun AppShell(context: Context) {
                         onBack = { appNavController.popBackStack() }
                     )
                 }
-
                 composable("editeurs") {
                     val vm: EditeurListViewModel = viewModel(
                         factory = EditeurListViewModel.factory()
@@ -273,10 +294,93 @@ private fun AppShell(context: Context) {
                 }
 
                 composable("festivals") {
-                    val vm: FestivalListViewModel = viewModel(
-                        factory = FestivalListViewModel.factory()
+                    val viewModel: FestivalListViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return FestivalListViewModel(festivalRepository, sharedPrefs) as T
+                            }
+                        }
                     )
-                    FestivalListScreen(viewModel = vm)
+                    FestivalListScreen(
+                        viewModel = viewModel,
+                        onAddClick = { appNavController.navigate("festival_create") },
+                        onFestivalClick = { id -> appNavController.navigate("festival_detail/$id") }
+                    )
+                }
+
+                composable(
+                    route = "festival_detail/{festivalId}",
+                    arguments = listOf(navArgument("festivalId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val festivalId = backStackEntry.arguments?.getInt("festivalId") ?: 0
+                    val viewModel: FestivalListViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return FestivalListViewModel(festivalRepository, sharedPrefs) as T
+                            }
+                        }
+                    )
+                    FestivalDetailScreen(
+                        festivalId = festivalId,
+                        viewModel = viewModel,
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onEditClick = { id -> appNavController.navigate("festival_edit/$id") }
+                    )
+                }
+
+                composable("festival_create") {
+                    val viewModel: FestivalFormViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return FestivalFormViewModel(
+                                    GetFestivalByIdUseCase(festivalRepository),
+                                    CreateFestivalUseCase(festivalRepository),
+                                    UpdateFestivalUseCase(festivalRepository)
+                                ) as T
+                            }
+                        }
+                    )
+                    FestivalFormScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onSuccess = { 
+                            appNavController.popBackStack()
+                        }
+                    )
+                }
+
+                composable(
+                    route = "festival_edit/{festivalId}",
+                    arguments = listOf(navArgument("festivalId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val festivalId = backStackEntry.arguments?.getInt("festivalId") ?: 0
+                    val viewModel: FestivalFormViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return FestivalFormViewModel(
+                                    GetFestivalByIdUseCase(festivalRepository),
+                                    CreateFestivalUseCase(festivalRepository),
+                                    UpdateFestivalUseCase(festivalRepository)
+                                ) as T
+                            }
+                        }
+                    )
+                    
+                    LaunchedEffect(festivalId) {
+                        viewModel.loadFestival(festivalId)
+                    }
+
+                    FestivalFormScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onSuccess = { 
+                            appNavController.popBackStack()
+                        }
+                    )
                 }
 
                 composable("users-management") {
