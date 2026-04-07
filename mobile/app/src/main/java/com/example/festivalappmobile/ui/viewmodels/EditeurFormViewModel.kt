@@ -19,7 +19,6 @@ data class EditeurFormState(
     val libelle: String = "",
     val phone: String = "",
     val email: String = "",
-    val logo: String = "",
     val notes: String = "",
     val exposant: Boolean = false,
     val distributeur: Boolean = false,
@@ -36,7 +35,6 @@ sealed class EditeurFormUiEvent {
     data class EnteredLibelle(val value: String) : EditeurFormUiEvent()
     data class EnteredPhone(val value: String) : EditeurFormUiEvent()
     data class EnteredEmail(val value: String) : EditeurFormUiEvent()
-    data class EnteredLogo(val value: String) : EditeurFormUiEvent()
     data class EnteredNotes(val value: String) : EditeurFormUiEvent()
     data class ChangedExposant(val value: Boolean) : EditeurFormUiEvent()
     data class ChangedDistributeur(val value: Boolean) : EditeurFormUiEvent()
@@ -66,7 +64,6 @@ class EditeurFormViewModel(
                         libelle = editeur.libelle,
                         phone = editeur.phone ?: "",
                         email = editeur.email ?: "",
-                        logo = editeur.logo ?: "",
                         notes = editeur.notes ?: "",
                         exposant = editeur.exposant,
                         distributeur = editeur.distributeur,
@@ -91,9 +88,6 @@ class EditeurFormViewModel(
             }
             is EditeurFormUiEvent.EnteredEmail -> {
                 _state.value = _state.value.copy(email = event.value)
-            }
-            is EditeurFormUiEvent.EnteredLogo -> {
-                _state.value = _state.value.copy(logo = event.value)
             }
             is EditeurFormUiEvent.EnteredNotes -> {
                 _state.value = _state.value.copy(notes = event.value)
@@ -126,7 +120,6 @@ class EditeurFormViewModel(
                             libelle = _state.value.libelle,
                             phone = _state.value.phone.ifBlank { null },
                             email = _state.value.email.ifBlank { null },
-                            logo = _state.value.logo.ifBlank { null },
                             notes = _state.value.notes.ifBlank { null },
                             exposant = _state.value.exposant,
                             distributeur = _state.value.distributeur
@@ -138,7 +131,6 @@ class EditeurFormViewModel(
                         EditeurUpdateRequestDto(
                             phone = _state.value.phone.ifBlank { null },
                             email = _state.value.email.ifBlank { null },
-                            logo = _state.value.logo.ifBlank { null },
                             notes = _state.value.notes.ifBlank { null }
                         )
                     )
