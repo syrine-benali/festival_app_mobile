@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.material)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.ui)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -59,6 +60,10 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.coil.compose)
+
 
     // --- NAVIGATION COMPOSE ---
     implementation("androidx.navigation:navigation-compose:2.7.5")

@@ -1,15 +1,12 @@
 package com.example.festivalappmobile.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.festivalappmobile.data.remote.RetrofitClient
-import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.domain.models.Editeur
-import com.example.festivalappmobile.domain.usecases.editeur.GetEditeursUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 sealed class EditeurUiState {
@@ -18,36 +15,61 @@ sealed class EditeurUiState {
     data class Error(val message: String) : EditeurUiState()
 }
 
-class EditeurListViewModel(private val getEditeursUseCase: GetEditeursUseCase) : ViewModel() {
+enum class ViewMode {
+    LIST, GRID
+}
 
-    private val _uiState = MutableStateFlow<EditeurUiState>(EditeurUiState.Loading)
-    val uiState: StateFlow<EditeurUiState> = _uiState.asStateFlow()
+data class EditeurListState(
+    val uiState: EditeurUiState = EditeurUiState.Loading,
+    val viewMode: ViewMode = ViewMode.LIST
+)
+
+class EditeurListViewModel(
+    private val repository: com.example.festivalappmobile.domain.repository.EditeurRepository
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(EditeurListState())
+    val state: StateFlow<EditeurListState> = _state.asStateFlow()
 
     init {
+        observeEditeurs()
         loadEditeurs()
     }
 
-    fun loadEditeurs() {
+    private fun observeEditeurs() {
         viewModelScope.launch {
-            _uiState.value = EditeurUiState.Loading
-            try {
-                val editeurs = getEditeursUseCase()
-                _uiState.value = EditeurUiState.Success(editeurs)
-            } catch (e: Exception) {
-                _uiState.value = EditeurUiState.Error(e.message ?: "Erreur lors du chargement des editeurs")
+            repository.editeurs.collect { editeurs ->
+                _state.update { it.copy(uiState = EditeurUiState.Success(editeurs)) }
             }
         }
     }
 
-    companion object {
-        fun factory(): ViewModelProvider.Factory =
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    val repository = EditeurRepositoryImpl(RetrofitClient.instance)
-                    val useCase = GetEditeursUseCase(repository)
-                    return EditeurListViewModel(useCase) as T
-                }
+    fun loadEditeurs() {
+        // We only trigger the loading, the observation handles the UI update
+        viewModelScope.launch {
+            try {
+                repository.getAllEditeurs()
+            } catch (e: Exception) {
+                _state.update { it.copy(uiState = EditeurUiState.Error(e.message ?: "Une erreur est survenue")) }
             }
+        }
+    }
+
+    fun toggleViewMode() {
+        _state.update { 
+            it.copy(viewMode = if (it.viewMode == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST)
+        }
+    }
+
+    fun deleteEditeur(id: Int) {
+        viewModelScope.launch {
+            try {
+                repository.deleteEditeur(id)
+                // The list should refresh automatically if deleteEditeur updates the repository flow
+                // But in repository impl, we might need to manually call getAllEditeurs() or emit new state
+            } catch (e: Exception) {
+                // Handle error if needed
+            }
+        }
     }
 }

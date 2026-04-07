@@ -84,12 +84,12 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { 
-                viewModel.onEmailChange(DevEnv.USER_EMAIL)
-                viewModel.onPasswordChange(DevEnv.PASSWORD)
+                viewModel.onEmailChange(DevEnvExample.USER_EMAIL)
+                viewModel.onPasswordChange(DevEnvExample.PASSWORD)
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Auto-fill DEV (from DevEnv.kt)")
+            Text("Auto-fill DEV (from DevEnvExample.kt)")
         }
         // ----------------------------------------
         
