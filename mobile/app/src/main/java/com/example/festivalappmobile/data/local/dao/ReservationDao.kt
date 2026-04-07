@@ -15,6 +15,12 @@ interface ReservationDao {
     @Query("SELECT * FROM reservations WHERE id = :id")
     suspend fun getById(id: Int): ReservationEntity?
 
+    @Query("SELECT id FROM reservations")
+    suspend fun getAllIds(): List<Int>
+
+    @Query("SELECT id FROM reservations WHERE festivalId = :festivalId")
+    suspend fun getIdsByFestival(festivalId: Int): List<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(reservations: List<ReservationEntity>)
 
@@ -23,6 +29,9 @@ interface ReservationDao {
 
     @Delete
     suspend fun delete(reservation: ReservationEntity)
+
+    @Query("DELETE FROM reservations WHERE id = :id")
+    suspend fun deleteById(id: Int)
 
     @Query("DELETE FROM reservations")
     suspend fun clearAll()

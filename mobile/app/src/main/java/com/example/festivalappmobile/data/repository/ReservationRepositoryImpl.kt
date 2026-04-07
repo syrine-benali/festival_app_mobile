@@ -54,6 +54,18 @@ class ReservationRepositoryImpl(
             val response = api.getReservations(festivalId)
             if (response.isSuccessful) {
                 val list = response.body()?.data?.map { it.toDomain().toEntity() } ?: emptyList()
+
+                // Nettoyer les réservations supprimées côté serveur mais encore présentes en cache.
+                val remoteIds = list.map { it.id }.toSet()
+                val cachedIds = if (festivalId != null) {
+                    dao.getIdsByFestival(festivalId)
+                } else {
+                    dao.getAllIds()
+                }
+                cachedIds
+                    .filter { it !in remoteIds }
+                    .forEach { staleId -> dao.deleteById(staleId) }
+
                 dao.insertAll(list)
             }
         } catch (_: Exception) { /* silencieux : on garde le cache */ }
@@ -69,6 +81,9 @@ class ReservationRepositoryImpl(
                     dao.insert(res.toSummary().toEntity())
                     Result.success(res)
                 } else {
+                    if (response.code() == 404 || response.body()?.reservation == null) {
+                        dao.deleteById(id)
+                    }
                     Result.failure(Exception("Réservation introuvable"))
                 }
             } else {
@@ -106,6 +121,7 @@ class ReservationRepositoryImpl(
         return try {
             val response = api.deleteReservation(id)
             if (response.isSuccessful && response.body()?.success == true) {
+                dao.deleteById(id)
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(response.body()?.message ?: "Erreur suppression réservation"))
