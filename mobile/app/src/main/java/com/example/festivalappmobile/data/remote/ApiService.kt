@@ -124,6 +124,12 @@ interface ApiService {
     @DELETE("api/festivals/{id}")
     suspend fun deleteFestival(@Path("id") id: Int): Response<FestivalDto>
 
+    @POST("api/festivals/{festivalId}/zones-tarifaires")
+    suspend fun addZoneTarifaire(
+        @Path("festivalId") festivalId: Int,
+        @Body body: AddZoneTarifaireRequestDto
+    ): Response<FestivalZoneTarifaireDto>
+
     // ===== EDITEURS =====
 
     @GET("api/editeurs")

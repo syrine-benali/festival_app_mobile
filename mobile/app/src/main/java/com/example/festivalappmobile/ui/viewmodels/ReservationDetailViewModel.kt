@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.festivalappmobile.data.local.AppDatabase
 import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.data.remote.dto.AddZoneTarifaireRequestDto
 import com.example.festivalappmobile.data.repository.ReservationRepositoryImpl
 import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.usecases.reservation.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 data class ReservationDetailUiState(
     val reservation: Reservation? = null,
@@ -168,9 +170,77 @@ class ReservationDetailViewModel(
         }
     }
 
-    fun addLineEntry(pricingId: Int, nbTables: Int, grandesTablesSouhaitees: Boolean) {
+    fun addLineEntry(tablePrice: Double, nbTables: Int, grandesTablesSouhaitees: Boolean) {
         viewModelScope.launch {
-            repo.addLine(reservationId, pricingId, nbTables, grandesTablesSouhaitees)
+            val reservation = _uiState.value.reservation
+            if (reservation == null) {
+                _uiState.update { it.copy(error = "Réservation introuvable") }
+                return@launch
+            }
+
+            val festivalResponse = try {
+                RetrofitClient.instance.getFestivalById(reservation.festivalId)
+            } catch (_: Exception) {
+                null
+            }
+
+            val initialZones = if (festivalResponse?.isSuccessful == true) {
+                festivalResponse.body()?.zoneTarifaires.orEmpty()
+            } else {
+                emptyList()
+            }
+
+            var selectedZone = initialZones.firstOrNull { abs(it.prixTable - tablePrice) < 0.01 }
+
+            if (selectedZone == null) {
+                val ratioM2ParTable = initialZones
+                    .firstOrNull { it.prixTable > 0.0 }
+                    ?.let { it.prixM2 / it.prixTable }
+                    ?.takeIf { it > 0.0 }
+                    ?: 0.5
+
+                val createZoneResponse = try {
+                    RetrofitClient.instance.addZoneTarifaire(
+                        festivalId = reservation.festivalId,
+                        body = AddZoneTarifaireRequestDto(
+                            nom = "Classe ${tablePrice.toInt()} EUR/table",
+                            prixTable = tablePrice,
+                            prixM2 = tablePrice * ratioM2ParTable
+                        )
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+
+                if (createZoneResponse?.isSuccessful == true) {
+                    selectedZone = createZoneResponse.body()
+                }
+            }
+
+            if (selectedZone == null) {
+                val availablePrices = initialZones
+                    .map { it.prixTable }
+                    .sorted()
+                    .joinToString(", ") { "${it.toInt()}" }
+
+                _uiState.update {
+                    it.copy(
+                        error = if (availablePrices.isBlank()) {
+                            "Impossible de trouver ou creer la classe tarifaire ${tablePrice.toInt()} EUR/table"
+                        } else {
+                            "Impossible de trouver ou creer ${tablePrice.toInt()} EUR/table. Prix disponibles: $availablePrices"
+                        }
+                    )
+                }
+                return@launch
+            }
+
+            repo.addLine(
+                reservationId = reservationId,
+                pricingId = selectedZone.id,
+                nbTables = nbTables,
+                grandesTablesSouhaitees = grandesTablesSouhaitees
+            )
                 .onSuccess {
                     _uiState.update { it.copy(successMessage = "Ligne ajoutée") }
                     load()
