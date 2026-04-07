@@ -13,6 +13,7 @@ import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.repository.ReservationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONObject
 
 class ReservationRepositoryImpl(
     private val api: ApiService,
@@ -173,18 +174,26 @@ class ReservationRepositoryImpl(
     }
 
     override suspend fun addLine(
-        reservationId: Int, pricingId: Int,
+        reservationId: Int,
+        pricingId: Int,
         nbTables: Int, grandesTablesSouhaitees: Boolean
     ): Result<ReservationLine> {
         return try {
-            val response = api.addLine(reservationId,
-                AddLineRequestDto(pricingId, nbTables, grandesTablesSouhaitees))
+            val response = api.addLine(
+                reservationId,
+                AddLineRequestDto(
+                    pricingId = pricingId,
+                    nbTables = nbTables,
+                    grandesTablesSouhaitees = grandesTablesSouhaitees
+                )
+            )
             if (response.isSuccessful && response.body()?.success == true) {
                 val added = response.body()?.line?.toDomain()
                     ?: return Result.failure(Exception("Ligne non retournée par le serveur"))
                 Result.success(added)
             } else {
-                Result.failure(Exception("Erreur ajout ligne"))
+                val backendMessage = extractApiErrorMessage(response.errorBody()?.string())
+                Result.failure(Exception(backendMessage ?: "Erreur ajout ligne"))
             }
         } catch (e: Exception) { Result.failure(e) }
     }
@@ -282,6 +291,21 @@ class ReservationRepositoryImpl(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private fun extractApiErrorMessage(errorBody: String?): String? {
+        if (errorBody.isNullOrBlank()) return null
+        return try {
+            val json = JSONObject(errorBody)
+            when {
+                json.optString("message").isNotBlank() -> json.optString("message")
+                json.optString("error").isNotBlank() -> json.optString("error")
+                json.optString("msg").isNotBlank() -> json.optString("msg")
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 

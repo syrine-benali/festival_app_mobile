@@ -452,9 +452,10 @@ fun ReservationDetailScreen(
     }
 
     if (showLineDialog) {
-        var pricingIdInput by remember { mutableStateOf("") }
+        var selectedPricingClass by remember { mutableStateOf(HARDCODED_PRICING_CLASSES.first()) }
         var nbTables by remember { mutableStateOf("") }
         var grandesTables by remember { mutableStateOf(false) }
+        var showPricingClassPicker by remember { mutableStateOf(false) }
 
         AlertDialog(
             onDismissRequest = { showLineDialog = false },
@@ -462,11 +463,18 @@ fun ReservationDetailScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = pricingIdInput,
-                        onValueChange = { pricingIdInput = it },
-                        label = { Text("ID tarification") },
+                        value = "${selectedPricingClass.label} - ${selectedPricingClass.tablePrice}€/table",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Classe tarifaire") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Button(
+                        onClick = { showPricingClassPicker = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Choisir une classe")
+                    }
                     OutlinedTextField(
                         value = nbTables,
                         onValueChange = { nbTables = it },
@@ -481,14 +489,13 @@ fun ReservationDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val pricingId = pricingIdInput.toIntOrNull()
                         val tables = nbTables.toIntOrNull()
-                        if (pricingId != null && tables != null) {
-                            viewModel.addLineEntry(pricingId, tables, grandesTables)
+                        if (tables != null) {
+                            viewModel.addLineEntry(selectedPricingClass.tablePrice, tables, grandesTables)
                             showLineDialog = false
                         }
                     },
-                    enabled = pricingIdInput.toIntOrNull() != null && nbTables.toIntOrNull() != null
+                    enabled = nbTables.toIntOrNull() != null
                 ) {
                     Text("Ajouter")
                 }
@@ -497,6 +504,34 @@ fun ReservationDetailScreen(
                 TextButton(onClick = { showLineDialog = false }) { Text("Annuler") }
             }
         )
+
+        if (showPricingClassPicker) {
+            AlertDialog(
+                onDismissRequest = { showPricingClassPicker = false },
+                title = { Text("Choisir une classe tarifaire") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        HARDCODED_PRICING_CLASSES.forEach { pricingClass ->
+                            TextButton(
+                                onClick = {
+                                    selectedPricingClass = pricingClass
+                                    showPricingClassPicker = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("${pricingClass.label} - ${pricingClass.tablePrice}€/table")
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showPricingClassPicker = false }) {
+                        Text("Fermer")
+                    }
+                }
+            )
+        }
     }
 
     editingLine?.let { line ->
@@ -808,6 +843,17 @@ private fun normalizeDateString(rawDate: String?): String {
     if (rawDate.isNullOrBlank()) return ""
     return if (rawDate.length >= 10) rawDate.substring(0, 10) else rawDate
 }
+
+private data class HardcodedPricingClass(
+    val label: String,
+    val tablePrice: Double
+)
+
+private val HARDCODED_PRICING_CLASSES = listOf(
+    HardcodedPricingClass(label = "Classe A", tablePrice = 75.0),
+    HardcodedPricingClass(label = "Classe B", tablePrice = 95.0),
+    HardcodedPricingClass(label = "Classe C", tablePrice = 120.0)
+)
 
 private fun dateStringToEpochMillis(dateString: String?): Long? {
     val normalized = normalizeDateString(dateString)
