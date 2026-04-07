@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Storefront
@@ -43,9 +44,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.festivalappmobile.data.local.TokenManager
 import com.example.festivalappmobile.data.remote.RetrofitClient
+import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.ui.screen.EditeurListScreen
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.screen.LoginScreen
+import com.example.festivalappmobile.ui.screen.MonCompteScreen
 import com.example.festivalappmobile.ui.screen.RegisterScreen
 import com.example.festivalappmobile.ui.screen.ReservationDetailScreen
 import com.example.festivalappmobile.ui.screen.ReservationListScreen
@@ -77,6 +80,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
                     val context = applicationContext
+                    var currentUser by remember { mutableStateOf<User?>(null) }
 
                     NavHost(
                         navController = navController,
@@ -85,7 +89,8 @@ class MainActivity : ComponentActivity() {
 
                         composable("login") {
                             LoginScreen(
-                                onLoginSuccess = {
+                                onLoginSuccess = { user ->
+                                    currentUser = user
                                     navController.navigate("app") {
                                         popUpTo("login") { inclusive = true }
                                     }
@@ -110,7 +115,17 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("app") {
-                            AppShell(context = context)
+                            AppShell(
+                                context = context,
+                                currentUser = currentUser,
+                                onLogout = {
+                                    currentUser = null
+                                    TokenManager(context).clearToken()
+                                    navController.navigate("login") {
+                                        popUpTo("app") { inclusive = true }
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -120,7 +135,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AppShell(context: Context) {
+private fun AppShell(
+    context: Context,
+    currentUser: User?,
+    onLogout: () -> Unit
+) {
     val appNavController = rememberNavController()
     val screenWidth = LocalConfiguration.current.screenWidthDp
     var isSidebarExpanded by rememberSaveable { mutableStateOf(screenWidth >= 600) }
@@ -135,7 +154,8 @@ private fun AppShell(context: Context) {
             AppTab(route = "festivals", label = "Festivals", icon = Icons.Default.Event),
             AppTab(route = "editeurs", label = "Editeurs", icon = Icons.Default.Storefront),
             AppTab(route = "reservations", label = "Reservations", icon = Icons.Default.TableRestaurant),
-            AppTab(route = "users-management", label = "Users", icon = Icons.Default.Groups)
+            AppTab(route = "users-management", label = "Users", icon = Icons.Default.Groups),
+            AppTab(route = "mon-compte", label = "Mon compte", icon = Icons.Default.AccountCircle)
         )
     }
     val navBackStackEntry by appNavController.currentBackStackEntryAsState()
@@ -144,7 +164,7 @@ private fun AppShell(context: Context) {
     LaunchedEffect(currentRoute) {
         when {
             currentRoute == "reservation/{id}" -> isSidebarExpanded = false
-            currentRoute in setOf("festivals", "editeurs", "reservations", "users-management") -> {
+            currentRoute in setOf("festivals", "editeurs", "reservations", "mon-compte", "users-management") -> {
                 if (screenWidth >= 600) {
                     isSidebarExpanded = true
                 }
@@ -282,6 +302,13 @@ private fun AppShell(context: Context) {
                 composable("users-management") {
                     val vm: UsersManagementViewModel = viewModel()
                     UsersAdminScreen(viewModel = vm)
+                }
+
+                composable("mon-compte") {
+                    MonCompteScreen(
+                        user = currentUser,
+                        onLogout = onLogout
+                    )
                 }
             }
         }
