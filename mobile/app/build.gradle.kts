@@ -56,6 +56,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.coilCompose)
 
 
     // --- NAVIGATION COMPOSE ---

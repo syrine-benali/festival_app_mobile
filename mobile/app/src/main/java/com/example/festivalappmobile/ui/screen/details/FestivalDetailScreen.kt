@@ -143,7 +143,7 @@ fun FestivalDetailScreen(
 }
 
 @Composable
-fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -157,7 +157,7 @@ fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-fun DetailRow(label: String, value: String) {
+private fun DetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
