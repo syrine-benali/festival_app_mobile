@@ -151,6 +151,11 @@ interface ApiService {
     @GET("api/jeux")
     suspend fun getAllGames(): Response<GameListResponseDto>
 
+    @GET("api/jeux/editeur/{editeurId}")
+    suspend fun getGamesByEditeur(
+        @Path("editeurId") editeurId: Int
+    ): Response<GameListResponseDto>
+
     @POST("api/jeux")
     suspend fun createGame(@Body body: GameCreateRequestDto): Response<GameResponseDto>
 
