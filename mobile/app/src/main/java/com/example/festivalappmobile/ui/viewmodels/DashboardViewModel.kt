@@ -162,17 +162,10 @@ class DashboardDetailViewModel(
                 Log.d(TAG, "Festival chargé : ${festival.nom}")
 
                 // ── 2. Charger les réservations du festival ──────────────
-                Log.d(TAG, "Rafraîchissement des réservations pour festivalId=$festivalId")
+                Log.d(TAG, "Chargement des réservations pour festivalId=$festivalId")
                 
-                // Rafraîchir les données depuis l'API si online
-                try {
-                    reservationRepository.refreshReservations(festivalId)
-                    Log.d(TAG, "refreshReservations terminé")
-                } catch (e: Exception) {
-                    Log.w(TAG, "Erreur refresh réservations : ${e.message}")
-                }
-                
-                // Ensuite : récupérer la première émission du Flow (cache + données fraîches)
+                // getReservations() lance automatiquement refreshReservationsAsync() si online
+                // .first() retourne le premier état (cache immédiat + données fraîches après)
                 val reservations: List<ReservationSummary> = try {
                     val resList = reservationRepository.getReservations(festivalId).first()
                     Log.d(TAG, "getReservations.first() retourné ${resList.size} items")

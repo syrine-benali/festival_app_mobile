@@ -11,10 +11,10 @@ import com.example.festivalappmobile.data.remote.dto.*
 import com.example.festivalappmobile.data.remote.mapper.toDomain
 import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.repository.ReservationRepository
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 class ReservationRepositoryImpl(
@@ -37,25 +37,25 @@ class ReservationRepositoryImpl(
     }
 
     // Retourne le Flow Room (offline), et tente un refresh en arrière-plan si online
-    override fun getReservations(festivalId: Int?): Flow<List<ReservationSummary>> {
-        // Lance le refresh sans bloquer - utilise coroutineScope pour ne pas bloquer le flow
+    override fun getReservations(festivalId: Int?): Flow<List<ReservationSummary>> = flow {
+        // ── 1. Refresh synchrone d'abord si online (on ATTEND le résultat) ──
         if (isOnline()) {
-            android.util.Log.d("ReservationRepo", "getReservations: triggering async refresh for festivalId=$festivalId")
-            // Lance le refresh en arrière-plan (fire-and-forget)
-            refreshReservationsAsync(festivalId)
+            android.util.Log.d("ReservationRepo", "getReservations: refreshing from API for festivalId=$festivalId")
+            try {
+                refreshReservations(festivalId)
+                android.util.Log.d("ReservationRepo", "getReservations: refresh completed, now emitting from Room")
+            } catch (e: Exception) {
+                android.util.Log.w("ReservationRepo", "getReservations: refresh failed, falling back to cache", e)
+            }
         }
+
+        // ── 2. Émettre les données du cache (maintenant à jour après le refresh) ──
         val flow = if (festivalId != null)
             dao.getByFestival(festivalId)
         else
             dao.getAll()
-        return flow.map { list -> list.map { it.toDomain() } }
-    }
-
-    // Helper pour lancer le refresh de manière asynchrone sans bloquer
-    private fun refreshReservationsAsync(festivalId: Int?) {
-        kotlinx.coroutines.GlobalScope.launch {
-            refreshReservations(festivalId)
-        }
+        
+        emitAll(flow.map { list -> list.map { it.toDomain() } })
     }
 
     // Refresh explicite appelé depuis le ViewModel
@@ -67,11 +67,18 @@ class ReservationRepositoryImpl(
         try {
             android.util.Log.d("ReservationRepo", "refreshReservations: calling API for festivalId=$festivalId")
             val response = api.getReservations(festivalId)
-            android.util.Log.d("ReservationRepo", "API response: ${response.code()}")
+            android.util.Log.d("ReservationRepo", "API response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
             
             if (response.isSuccessful) {
-                val rawList = response.body()?.data ?: emptyList()
+                val body = response.body()
+                android.util.Log.d("ReservationRepo", "API response body: $body")
+                
+                val rawList = body?.data ?: emptyList()
                 android.util.Log.d("ReservationRepo", "API returned ${rawList.size} reservations")
+                
+                if (rawList.isEmpty()) {
+                    android.util.Log.w("ReservationRepo", "⚠️ API returned 0 reservations for festivalId=$festivalId")
+                }
                 
                 val list = rawList.map { it.toDomain().toEntity() }
                 android.util.Log.d("ReservationRepo", "Mapped to ${list.size} entities")
@@ -90,10 +97,12 @@ class ReservationRepositoryImpl(
                 dao.insertAll(list)
                 android.util.Log.d("ReservationRepo", "Inserted ${list.size} reservations into DB")
             } else {
-                android.util.Log.w("ReservationRepo", "API error: ${response.code()} - ${response.errorBody()?.string()}")
+                val errorBody = response.errorBody()?.string()
+                android.util.Log.w("ReservationRepo", "API error: ${response.code()} - HTTP error body: $errorBody")
             }
         } catch (e: Exception) {
             android.util.Log.e("ReservationRepo", "Exception in refreshReservations", e)
+            e.printStackTrace()
         }
     }
 
