@@ -162,13 +162,11 @@ class DashboardDetailViewModel(
                 Log.d(TAG, "Festival chargé : ${festival.nom}")
 
                 // ── 2. Charger les réservations du festival ──────────────
-                Log.d(TAG, "Chargement des réservations pour festivalId=$festivalId")
-                
-                // getReservations() lance automatiquement refreshReservationsAsync() si online
-                // .first() retourne le premier état (cache immédiat + données fraîches après)
+                // getReservations() émet du cache immédiatement, refresh en arrière-plan si online
                 val reservations: List<ReservationSummary> = try {
-                    val resList = reservationRepository.getReservations(festivalId).first()
-                    Log.d(TAG, "getReservations.first() retourné ${resList.size} items")
+                    val resList = reservationRepository.getReservations(festivalId)
+                        .first()  // Prendre la première émission du Flow (cache ou refresh complet)
+                    Log.d(TAG, "Réservations : ${resList.size} items")
                     resList
                 } catch (e: Exception) {
                     Log.w(TAG, "Erreur chargement réservations : ${e.message}", e)

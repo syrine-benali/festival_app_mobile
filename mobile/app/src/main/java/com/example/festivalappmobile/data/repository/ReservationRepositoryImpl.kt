@@ -13,6 +13,7 @@ import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.repository.ReservationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
@@ -36,26 +37,35 @@ class ReservationRepositoryImpl(
         }
     }
 
-    // Retourne le Flow Room (offline), et tente un refresh en arrière-plan si online
+    // Retourne le Flow Room (offline-first) + refresh si online et cache vide
     override fun getReservations(festivalId: Int?): Flow<List<ReservationSummary>> = flow {
-        // ── 1. Refresh synchrone d'abord si online (on ATTEND le résultat) ──
-        if (isOnline()) {
-            android.util.Log.d("ReservationRepo", "getReservations: refreshing from API for festivalId=$festivalId")
-            try {
-                refreshReservations(festivalId)
-                android.util.Log.d("ReservationRepo", "getReservations: refresh completed, now emitting from Room")
-            } catch (e: Exception) {
-                android.util.Log.w("ReservationRepo", "getReservations: refresh failed, falling back to cache", e)
-            }
-        }
-
-        // ── 2. Émettre les données du cache (maintenant à jour après le refresh) ──
-        val flow = if (festivalId != null)
+        android.util.Log.d("ReservationRepo", "getReservations called for festivalId=$festivalId, isOnline=${isOnline()}")
+        
+        val cacheFlow = if (festivalId != null)
             dao.getByFestival(festivalId)
         else
             dao.getAll()
         
-        emitAll(flow.map { list -> list.map { it.toDomain() } })
+        // ── 1. Émettre UNE FOIS depuis le cache (pas une boucle infinie!) ──
+        val firstCacheValue = cacheFlow.first().map { it.toDomain() }
+        android.util.Log.d("ReservationRepo", "First cache emission: ${firstCacheValue.size} items")
+        emit(firstCacheValue)
+        
+        // ── 2. Si online ET cache vide, faire un refresh bloquant ──
+        if (isOnline() && firstCacheValue.isEmpty()) {
+            android.util.Log.d("ReservationRepo", "Cache empty and online → doing refresh")
+            try {
+                refreshReservations(festivalId)
+                // Après refresh, émettre la version mise à jour du cache
+                val refreshedValue = cacheFlow.first().map { it.toDomain() }
+                android.util.Log.d("ReservationRepo", "After refresh: ${refreshedValue.size} items")
+                if (refreshedValue != firstCacheValue) {
+                    emit(refreshedValue)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ReservationRepo", "Error during refresh", e)
+            }
+        }
     }
 
     // Refresh explicite appelé depuis le ViewModel
