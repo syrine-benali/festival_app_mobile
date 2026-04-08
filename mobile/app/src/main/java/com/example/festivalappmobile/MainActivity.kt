@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.TableRestaurant
@@ -47,11 +48,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.festivalappmobile.data.local.AppDatabase
 import com.example.festivalappmobile.data.local.TokenManager
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
 import com.example.festivalappmobile.data.repository.GameRepositoryImpl
+import com.example.festivalappmobile.data.repository.ReservationRepositoryImpl
 import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.GetEditeurByIdUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.UpdateEditeurUseCase
@@ -61,7 +64,9 @@ import com.example.festivalappmobile.domain.usecases.festival.UpdateFestivalUseC
 import com.example.festivalappmobile.domain.usecases.game.DeleteGameUseCase
 import com.example.festivalappmobile.domain.usecases.game.GetAllGamesUseCase
 import com.example.festivalappmobile.domain.models.User
+import com.example.festivalappmobile.ui.screen.DashboardScreen
 import com.example.festivalappmobile.ui.screen.EditeurListScreen
+import com.example.festivalappmobile.ui.screen.FestivalDashboardDetailScreen
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.screen.LoginScreen
 import com.example.festivalappmobile.ui.screen.GameListScreen
@@ -76,6 +81,8 @@ import com.example.festivalappmobile.ui.screen.forms.EditeurFormScreen
 import com.example.festivalappmobile.ui.screen.forms.FestivalFormScreen
 import com.example.festivalappmobile.ui.screen.forms.GameFormScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
+import com.example.festivalappmobile.ui.viewmodels.DashboardDetailViewModel
+import com.example.festivalappmobile.ui.viewmodels.DashboardViewModel
 import com.example.festivalappmobile.ui.viewmodels.EditeurFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
@@ -176,6 +183,7 @@ private fun AppShell(
 
     val tabs = remember {
         listOf(
+            AppTab(route = "dashboard", label = "Tableau de bord", icon = Icons.Default.Dashboard),
             AppTab(route = "festivals", label = "Festivals", icon = Icons.Default.Event),
             AppTab(route = "editeurs", label = "Editeurs", icon = Icons.Default.Business),
             AppTab(route = "jeux", label = "Jeux", icon = Icons.Default.VideogameAsset),
@@ -190,7 +198,7 @@ private fun AppShell(
     LaunchedEffect(currentRoute) {
         when {
             currentRoute == "reservation/{id}" -> isSidebarExpanded = false
-            currentRoute in setOf("festivals", "editeurs", "jeux", "reservations", "mon-compte", "users-management") -> {
+            currentRoute in setOf("dashboard", "festivals", "editeurs", "jeux", "reservations", "mon-compte", "users-management") -> {
                 if (screenWidth >= 600) {
                     isSidebarExpanded = true
                 }
@@ -215,6 +223,12 @@ private fun AppShell(
     val gameRepository = remember {
         val api = RetrofitClient.instance
         GameRepositoryImpl(api)
+    }
+
+    val reservationRepository = remember {
+        val api = RetrofitClient.instance
+        val db = AppDatabase.getInstance(context)
+        ReservationRepositoryImpl(api, db, context)
     }
 
     Row(
@@ -301,8 +315,50 @@ private fun AppShell(
         ) {
             NavHost(
                 navController = appNavController,
-                startDestination = "festivals"
+                startDestination = "dashboard"
             ) {
+                composable("dashboard") {
+                    val viewModel: DashboardViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return DashboardViewModel(festivalRepository) as T
+                            }
+                        }
+                    )
+                    DashboardScreen(
+                        viewModel = viewModel,
+                        onFestivalClick = { id ->
+                            appNavController.navigate("festival_dashboard_detail/$id")
+                        }
+                    )
+                }
+
+                composable(
+                    route = "festival_dashboard_detail/{festivalId}",
+                    arguments = listOf(navArgument("festivalId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val festivalId = backStackEntry.arguments?.getInt("festivalId") ?: return@composable
+                    val viewModel: DashboardDetailViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return DashboardDetailViewModel(
+                                    festivalId = festivalId,
+                                    festivalRepository = festivalRepository,
+                                    gameRepository = gameRepository,
+                                    editeurRepository = editeurRepository,
+                                    reservationRepository = reservationRepository
+                                ) as T
+                            }
+                        }
+                    )
+                    FestivalDashboardDetailScreen(
+                        viewModel = viewModel,
+                        onBackClick = { appNavController.popBackStack() }
+                    )
+                }
+
                 composable("reservations") {
                     val vm: ReservationListViewModel = viewModel(
                         factory = ReservationListViewModel.factory(context)
