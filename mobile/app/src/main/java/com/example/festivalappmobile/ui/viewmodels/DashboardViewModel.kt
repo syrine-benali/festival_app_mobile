@@ -68,54 +68,62 @@ class DashboardViewModel(
                 val allJeux         = jeuxDeferred.await()
                 val allEditeurs     = editeursDeferred.await()
 
-                // Festivals actifs aujourd'hui
-                val activeFestivals = allFestivals.filter { isActiveToday(it) }
-
-                if (activeFestivals.isEmpty()) {
-                    // Aucun festival en cours — on met quand même en cache les festivals
-                    cacheRepo.saveFestivals(allFestivals)
+                // ── Pas de festivals du tout ──────────────────────────────────────
+                if (allFestivals.isEmpty()) {
+                    cacheRepo.saveFestivals(emptyList())
                     cacheRepo.saveJeux(emptyList())
                     cacheRepo.saveEditeurs(emptyList())
-
-                    _uiState.value = DashboardUiState(
-                        festivals = allFestivals,
-                        jeux = emptyList(),
-                        editeurs = emptyList(),
-                        noActiveFestival = true,
-                        isOffline = false
-                    )
+                    _uiState.value = DashboardUiState(noActiveFestival = true, isOffline = false)
                     return@launch
                 }
 
-                // IDs des éditeurs présents dans les festivals actifs
-                val activeFestivalIds = activeFestivals.map { it.id }.toSet()
+                // ── Tri des festivals : actifs aujourd'hui d'abord, puis à venir, puis passés ──
+                val sortedFestivals = allFestivals.sortedWith(
+                    compareByDescending<Festival> { isActiveToday(it) }
+                        .thenBy {
+                            try { LocalDate.parse(it.dateDebut.take(10)) }
+                            catch (_: Exception) { LocalDate.MAX }
+                        }
+                )
 
-                val editeurIdsPresents: Set<Int> = if (allReservations.isNotEmpty()) {
-                    allReservations
-                        .filter { it.festivalId in activeFestivalIds }
-                        .map { it.editeurId }
-                        .toSet()
+                // ── IDs des festivals actifs aujourd'hui (pour filtrer jeux/éditeurs) ──
+                val activeFestivalIds = allFestivals
+                    .filter { isActiveToday(it) }
+                    .map { it.id }
+                    .toSet()
+
+                // ── Réservations de référence ──────────────────────────────────────────
+                // Si des festivals sont actifs aujourd'hui → on utilise leurs réservations
+                // Sinon → on utilise toutes les réservations (à venir ou passées)
+                val reservationsDeReference = if (activeFestivalIds.isNotEmpty()) {
+                    allReservations.filter { it.festivalId in activeFestivalIds }
                 } else {
-                    allEditeurs
-                        .filter { it.hasReservation }
-                        .map { it.id }
-                        .toSet()
+                    allReservations
+                }
+
+                // ── IDs éditeurs présents ─────────────────────────────────────────────
+                val editeurIdsPresents: Set<Int> = if (reservationsDeReference.isNotEmpty()) {
+                    reservationsDeReference.map { it.editeurId }.toSet()
+                } else {
+                    // Aucune réservation disponible → tous les éditeurs ayant déjà réservé
+                    allEditeurs.filter { it.hasReservation }.map { it.id }.toSet()
                 }
 
                 val filteredEditeurs = allEditeurs.filter { it.id in editeurIdsPresents }
                 val filteredJeux     = allJeux.filter { it.editeurId in editeurIdsPresents }
 
-                // Sauvegarde dans Room (données filtrées = ce que verra l'utilisateur offline)
-                cacheRepo.saveFestivals(activeFestivals)
+                // ── Sauvegarde dans Room pour le mode hors-ligne ──────────────────────
+                cacheRepo.saveFestivals(sortedFestivals)
                 cacheRepo.saveJeux(filteredJeux)
                 cacheRepo.saveEditeurs(filteredEditeurs)
 
                 _uiState.value = DashboardUiState(
-                    festivals = activeFestivals,
-                    jeux = filteredJeux,
-                    editeurs = filteredEditeurs,
-                    noActiveFestival = false,
-                    isOffline = false
+                    festivals     = sortedFestivals,
+                    jeux          = filteredJeux,
+                    editeurs      = filteredEditeurs,
+                    // true seulement si aucun festival n'est actif AUJOURD'HUI (bannière info)
+                    noActiveFestival = activeFestivalIds.isEmpty(),
+                    isOffline     = false
                 )
 
             } catch (e: Exception) {

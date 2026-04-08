@@ -260,7 +260,9 @@ class ReservationRepositoryImpl(
                     ?: return Result.failure(Exception("Jeu non retourné par le serveur"))
                 Result.success(added)
             } else {
-                Result.failure(Exception("Erreur ajout jeu"))
+                val msg = extractApiErrorMessage(response.errorBody()?.string())
+                    ?: "Erreur ajout jeu (HTTP ${response.code()})"
+                Result.failure(Exception(msg))
             }
         } catch (e: Exception) { Result.failure(e) }
     }
@@ -282,7 +284,9 @@ class ReservationRepositoryImpl(
                     ?: return Result.failure(Exception("Jeu non retourné par le serveur"))
                 Result.success(updated)
             } else {
-                Result.failure(Exception("Erreur mise à jour jeu"))
+                val msg = extractApiErrorMessage(response.errorBody()?.string())
+                    ?: "Erreur mise à jour jeu (HTTP ${response.code()})"
+                Result.failure(Exception(msg))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -293,7 +297,7 @@ class ReservationRepositoryImpl(
         return try {
             val response = api.deleteJeu(jeuId)
             if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Erreur suppression jeu"))
+            else Result.failure(Exception("Erreur suppression jeu (HTTP ${response.code()})"))
         } catch (e: Exception) { Result.failure(e) }
     }
 

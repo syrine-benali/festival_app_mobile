@@ -4,26 +4,48 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.festivalappmobile.data.local.dao.DashboardEditeurDao
+import com.example.festivalappmobile.data.local.dao.DashboardFestivalDao
+import com.example.festivalappmobile.data.local.dao.DashboardJeuDao
 import com.example.festivalappmobile.data.local.dao.ReservationDao
+import com.example.festivalappmobile.data.local.entity.DashboardEditeurEntity
+import com.example.festivalappmobile.data.local.entity.DashboardFestivalEntity
+import com.example.festivalappmobile.data.local.entity.DashboardJeuEntity
 import com.example.festivalappmobile.data.local.entity.ReservationEntity
 
-@Database(entities = [ReservationEntity::class], version = 2, exportSchema = false)
+@Database(
+    entities = [
+        ReservationEntity::class,
+        DashboardFestivalEntity::class,
+        DashboardJeuEntity::class,
+        DashboardEditeurEntity::class
+    ],
+    version = 2,  // bumped: ReservationEntity schema changed after merge (added ~15 new fields)
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun reservationDao(): ReservationDao
+    abstract fun dashboardFestivalDao(): DashboardFestivalDao
+    abstract fun dashboardJeuDao(): DashboardJeuDao
+    abstract fun dashboardEditeurDao(): DashboardEditeurDao
 
     companion object {
-        @Volatile private var instance: AppDatabase? = null
-        
-        fun getInstance(context: Context): AppDatabase =
-            instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
+
+        fun getInstance(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "festival_db"
+                    "festival_app_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
-                    .also { instance = it }
+                INSTANCE = instance
+                instance
             }
+        }
     }
 }

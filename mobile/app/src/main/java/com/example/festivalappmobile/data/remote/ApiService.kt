@@ -92,9 +92,9 @@ interface ApiService {
     @DELETE("api/editeurs/{id}")
     suspend fun deleteEditeur(@Path("id") id: Int): Response<EditeurDeleteResponseDto>
 
-    // ===== JEUX (Catalogue) - FUSION B =====
+    // ===== JEUX (Catalogue) - fusion feat-roomDB + main =====
     @GET("api/jeux")
-    suspend fun getAllGames(): Response<GameListResponseDto>
+    suspend fun getJeux(): Response<JeuxResponseDto>
 
     @GET("api/jeux/editeur/{editeurId}")
     suspend fun getGamesByEditeur(@Path("editeurId") editeurId: Int): Response<GameListResponseDto>
@@ -117,4 +117,8 @@ interface ApiService {
 
     @PUT("api/users/{id}")
     suspend fun updateUser(@Path("id") userId: Int, @Body request: UpdateUserRequestDto): Response<UpdateUserResponseDto>
+
+    // ===== LEGACY ENDPOINTS (feat-roomDB compatibility) =====
+    @GET("api/reservations")
+    suspend fun getReservationsWrapped(): Response<ReservationsListResponseDto>
 }
