@@ -9,6 +9,7 @@ import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.remote.dto.AddZoneTarifaireRequestDto
 import com.example.festivalappmobile.data.repository.GameRepositoryImpl
 import com.example.festivalappmobile.data.repository.ReservationRepositoryImpl
+import com.example.festivalappmobile.utils.NetworkMonitor
 import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.usecases.reservation.*
 import kotlinx.coroutines.flow.*
@@ -33,16 +34,20 @@ class ReservationDetailViewModel(
     context: Context
 ) : ViewModel() {
 
+    private val networkMonitor = NetworkMonitor(context.applicationContext)
+    private val db = AppDatabase.getInstance(context)
+    private val api = RetrofitClient.instance
+
     private val repo = ReservationRepositoryImpl(
-        api = RetrofitClient.instance,
-        db = AppDatabase.getInstance(context),
-        context = context.applicationContext  // ← plus de TODO
+        api = api,
+        db = db,
+        context = context.applicationContext
     )
     private val getDetail = GetReservationDetailUseCase(repo)
     private val updateWorkflow = UpdateWorkflowUseCase(repo)
     private val addContact = AddContactUseCase(repo)
     private val addJeu = AddJeuUseCase(repo)
-    private val gameRepo = GameRepositoryImpl(RetrofitClient.instance)
+    private val gameRepo = GameRepositoryImpl(api, db.gameDao(), networkMonitor)
 
     private val _uiState = MutableStateFlow(ReservationDetailUiState())
     val uiState: StateFlow<ReservationDetailUiState> = _uiState.asStateFlow()

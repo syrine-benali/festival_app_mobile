@@ -12,28 +12,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material.icons.filled.VideogameAsset
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,6 +43,7 @@ import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
 import com.example.festivalappmobile.data.repository.GameRepositoryImpl
 import com.example.festivalappmobile.data.repository.ReservationRepositoryImpl
+import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.GetEditeurByIdUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.UpdateEditeurUseCase
@@ -63,35 +52,94 @@ import com.example.festivalappmobile.domain.usecases.festival.GetFestivalByIdUse
 import com.example.festivalappmobile.domain.usecases.festival.UpdateFestivalUseCase
 import com.example.festivalappmobile.domain.usecases.game.DeleteGameUseCase
 import com.example.festivalappmobile.domain.usecases.game.GetAllGamesUseCase
-import com.example.festivalappmobile.domain.models.User
-import com.example.festivalappmobile.ui.screen.DashboardScreen
-import com.example.festivalappmobile.ui.screen.EditeurListScreen
-import com.example.festivalappmobile.ui.screen.FestivalDashboardDetailScreen
-import com.example.festivalappmobile.ui.screen.FestivalListScreen
-import com.example.festivalappmobile.ui.screen.LoginScreen
-import com.example.festivalappmobile.ui.screen.GameListScreen
-import com.example.festivalappmobile.ui.screen.MonCompteScreen
-import com.example.festivalappmobile.ui.screen.RegisterScreen
-import com.example.festivalappmobile.ui.screen.ReservationDetailScreen
-import com.example.festivalappmobile.ui.screen.ReservationListScreen
-import com.example.festivalappmobile.ui.screen.UsersAdminScreen
+import com.example.festivalappmobile.ui.screen.*
 import com.example.festivalappmobile.ui.screen.details.EditeurDetailScreen
 import com.example.festivalappmobile.ui.screen.details.FestivalDetailScreen
 import com.example.festivalappmobile.ui.screen.forms.EditeurFormScreen
 import com.example.festivalappmobile.ui.screen.forms.FestivalFormScreen
 import com.example.festivalappmobile.ui.screen.forms.GameFormScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
-import com.example.festivalappmobile.ui.viewmodels.DashboardDetailViewModel
-import com.example.festivalappmobile.ui.viewmodels.DashboardViewModel
-import com.example.festivalappmobile.ui.viewmodels.EditeurFormViewModel
-import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
-import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
-import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
-import com.example.festivalappmobile.ui.viewmodels.GameFormViewModel
-import com.example.festivalappmobile.ui.viewmodels.GameListViewModel
-import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
-import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
-import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
+import com.example.festivalappmobile.ui.viewmodels.*
+import com.example.festivalappmobile.utils.NetworkMonitor
+
+/**
+ * Dashboard accessible sans connexion.
+ * Affiche uniquement la liste des festivals et le détail d'un festival.
+ * Aucune barre de navigation latérale, aucun accès aux autres modules.
+ */
+@Composable
+private fun PublicDashboardShell(
+    context: Context,
+    onBack: () -> Unit
+) {
+    val publicNavController = rememberNavController()
+    val networkMonitor = remember { NetworkMonitor(context) }
+    val db = remember { AppDatabase.getInstance(context) }
+    val api = remember { RetrofitClient.instance }
+
+    val festivalRepository = remember {
+        FestivalRepositoryImpl(api, db.festivalDao(), networkMonitor)
+    }
+    val editeurRepository = remember {
+        EditeurRepositoryImpl(api, db.editeurDao(), networkMonitor)
+    }
+    val gameRepository = remember {
+        GameRepositoryImpl(api, db.gameDao(), networkMonitor)
+    }
+    val reservationRepository = remember {
+        ReservationRepositoryImpl(api, db, context)
+    }
+
+    NavHost(
+        navController = publicNavController,
+        startDestination = "dashboard"
+    ) {
+        composable("dashboard") {
+            val viewModel: DashboardViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        @Suppress("UNCHECKED_CAST")
+                        return DashboardViewModel(festivalRepository, networkMonitor) as T
+                    }
+                }
+            )
+            // On surcharge la TopAppBar avec un bouton retour
+            PublicDashboardScreen(
+                viewModel = viewModel,
+                onFestivalClick = { id ->
+                    publicNavController.navigate("festival_detail/$id")
+                },
+                onBack = onBack
+            )
+        }
+
+        composable(
+            route = "festival_detail/{festivalId}",
+            arguments = listOf(navArgument("festivalId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val festivalId =
+                backStackEntry.arguments?.getInt("festivalId") ?: return@composable
+            val viewModel: DashboardDetailViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        @Suppress("UNCHECKED_CAST")
+                        return DashboardDetailViewModel(
+                            festivalId = festivalId,
+                            festivalRepository = festivalRepository,
+                            gameRepository = gameRepository,
+                            reservationRepository = reservationRepository,
+                            networkMonitor = networkMonitor
+                        ) as T
+                    }
+                }
+            )
+            FestivalDashboardDetailScreen(
+                viewModel = viewModel,
+                onBackClick = { publicNavController.popBackStack() }
+            )
+        }
+    }
+}
 
 private data class AppTab(
     val route: String,
@@ -104,7 +152,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialiser le TokenManager et Retrofit une seule fois
         val tokenManager = TokenManager(applicationContext)
         RetrofitClient.init(tokenManager)
 
@@ -117,14 +164,39 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = navController,
-                        startDestination = "login"
+                        startDestination = "welcome"   // ← page d'accueil avec 3 boutons
                     ) {
+                        // ── Page d'accueil ──────────────────────────────
+                        composable("welcome") {
+                            WelcomeScreen(
+                                onNavigateToLogin = {
+                                    navController.navigate("login")
+                                },
+                                onNavigateToRegister = {
+                                    navController.navigate("register")
+                                },
+                                onNavigateToDashboard = {
+                                    // Dashboard public : pas d'AppShell, pas de nav rail
+                                    navController.navigate("public_dashboard")
+                                }
+                            )
+                        }
+
+                        // ── Dashboard public (sans connexion, sans nav rail) ──
+                        composable("public_dashboard") {
+                            PublicDashboardShell(
+                                context = context,
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
+
+                        // ── Connexion ───────────────────────────────────
                         composable("login") {
                             LoginScreen(
                                 onLoginSuccess = { user ->
                                     currentUser = user
                                     navController.navigate("app") {
-                                        popUpTo("login") { inclusive = true }
+                                        popUpTo("welcome") { inclusive = true }
                                     }
                                 },
                                 onNavigateToRegister = {
@@ -133,6 +205,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        // ── Inscription ─────────────────────────────────
                         composable("register") {
                             RegisterScreen(
                                 onRegistrationSuccess = {
@@ -146,6 +219,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        // ── App principale (shell + nav rail) ───────────
                         composable("app") {
                             AppShell(
                                 context = context,
@@ -153,7 +227,7 @@ class MainActivity : ComponentActivity() {
                                 onLogout = {
                                     currentUser = null
                                     TokenManager(context).clearToken()
-                                    navController.navigate("login") {
+                                    navController.navigate("welcome") {
                                         popUpTo("app") { inclusive = true }
                                     }
                                 }
@@ -192,16 +266,18 @@ private fun AppShell(
             AppTab(route = "mon-compte", label = "Mon compte", icon = Icons.Default.AccountCircle)
         )
     }
+
     val navBackStackEntry by appNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     LaunchedEffect(currentRoute) {
         when {
             currentRoute == "reservation/{id}" -> isSidebarExpanded = false
-            currentRoute in setOf("dashboard", "festivals", "editeurs", "jeux", "reservations", "mon-compte", "users-management") -> {
-                if (screenWidth >= 600) {
-                    isSidebarExpanded = true
-                }
+            currentRoute in setOf(
+                "dashboard", "festivals", "editeurs", "jeux",
+                "reservations", "mon-compte", "users-management"
+            ) -> {
+                if (screenWidth >= 600) isSidebarExpanded = true
             }
         }
     }
@@ -210,24 +286,23 @@ private fun AppShell(
         context.getSharedPreferences("festival_prefs", Context.MODE_PRIVATE)
     }
 
+    // ── NetworkMonitor (singleton par AppShell) ─────────────────────────────
+    val networkMonitor = remember { NetworkMonitor(context) }
+
+    // ── Repositories offline-first ──────────────────────────────────────────
+    val db = remember { AppDatabase.getInstance(context) }
+    val api = remember { RetrofitClient.instance }
+
     val festivalRepository = remember {
-        val api = RetrofitClient.instance
-        FestivalRepositoryImpl(api)
+        FestivalRepositoryImpl(api, db.festivalDao(), networkMonitor)
     }
-
     val editeurRepository = remember {
-        val api = RetrofitClient.instance
-        EditeurRepositoryImpl(api)
+        EditeurRepositoryImpl(api, db.editeurDao(), networkMonitor)
     }
-
     val gameRepository = remember {
-        val api = RetrofitClient.instance
-        GameRepositoryImpl(api)
+        GameRepositoryImpl(api, db.gameDao(), networkMonitor)
     }
-
     val reservationRepository = remember {
-        val api = RetrofitClient.instance
-        val db = AppDatabase.getInstance(context)
         ReservationRepositoryImpl(api, db, context)
     }
 
@@ -236,6 +311,7 @@ private fun AppShell(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
+        // ── Barre latérale de navigation ────────────────────────────────────
         Surface(
             modifier = Modifier
                 .width(sidebarWidth)
@@ -253,23 +329,18 @@ private fun AppShell(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (isSidebarExpanded) {
-                        Text(
-                            text = "Festival",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Text(text = "Festival", style = MaterialTheme.typography.titleMedium)
                     }
                     IconButton(onClick = { isSidebarExpanded = !isSidebarExpanded }) {
                         Icon(
-                            imageVector = if (isSidebarExpanded) {
+                            imageVector = if (isSidebarExpanded)
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft
-                            } else {
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight
-                            },
-                            contentDescription = if (isSidebarExpanded) {
+                            else
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = if (isSidebarExpanded)
                                 "Réduire la barre latérale"
-                            } else {
+                            else
                                 "Déployer la barre latérale"
-                            }
                         )
                     }
                 }
@@ -296,9 +367,7 @@ private fun AppShell(
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
                             label = if (isSidebarExpanded) {
                                 { Text(tab.label) }
-                            } else {
-                                null
-                            },
+                            } else null,
                             alwaysShowLabel = isSidebarExpanded
                         )
                     }
@@ -308,6 +377,7 @@ private fun AppShell(
 
         VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+        // ── Contenu principal ───────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -317,12 +387,13 @@ private fun AppShell(
                 navController = appNavController,
                 startDestination = "dashboard"
             ) {
+                // ── Dashboard ───────────────────────────────────────────
                 composable("dashboard") {
                     val viewModel: DashboardViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
                             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                                 @Suppress("UNCHECKED_CAST")
-                                return DashboardViewModel(festivalRepository) as T
+                                return DashboardViewModel(festivalRepository, networkMonitor) as T
                             }
                         }
                     )
@@ -338,7 +409,8 @@ private fun AppShell(
                     route = "festival_dashboard_detail/{festivalId}",
                     arguments = listOf(navArgument("festivalId") { type = NavType.IntType })
                 ) { backStackEntry ->
-                    val festivalId = backStackEntry.arguments?.getInt("festivalId") ?: return@composable
+                    val festivalId =
+                        backStackEntry.arguments?.getInt("festivalId") ?: return@composable
                     val viewModel: DashboardDetailViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
                             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -347,8 +419,8 @@ private fun AppShell(
                                     festivalId = festivalId,
                                     festivalRepository = festivalRepository,
                                     gameRepository = gameRepository,
-                                    editeurRepository = editeurRepository,
-                                    reservationRepository = reservationRepository
+                                    reservationRepository = reservationRepository,
+                                    networkMonitor = networkMonitor
                                 ) as T
                             }
                         }
@@ -359,6 +431,7 @@ private fun AppShell(
                     )
                 }
 
+                // ── Réservations ────────────────────────────────────────
                 composable("reservations") {
                     val vm: ReservationListViewModel = viewModel(
                         factory = ReservationListViewModel.factory(context)
@@ -376,7 +449,6 @@ private fun AppShell(
                         ?.getString("id")
                         ?.toIntOrNull()
                         ?: return@composable
-
                     val vm: ReservationDetailViewModel = viewModel(
                         factory = ReservationDetailViewModel.factory(context, id)
                     )
@@ -386,6 +458,7 @@ private fun AppShell(
                     )
                 }
 
+                // ── Festivals ───────────────────────────────────────────
                 composable("festivals") {
                     val viewModel: FestivalListViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
@@ -423,6 +496,7 @@ private fun AppShell(
                     )
                 }
 
+                // ── Éditeurs ────────────────────────────────────────────
                 composable("editeurs") {
                     val viewModel: EditeurListViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
@@ -443,7 +517,8 @@ private fun AppShell(
                     route = "editeur_detail/{editeurId}",
                     arguments = listOf(navArgument("editeurId") { type = NavType.IntType })
                 ) { backStackEntry ->
-                    val editeurId = backStackEntry.arguments?.getInt("editeurId") ?: return@composable
+                    val editeurId =
+                        backStackEntry.arguments?.getInt("editeurId") ?: return@composable
                     val viewModel: EditeurListViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
                             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -476,9 +551,7 @@ private fun AppShell(
                     EditeurFormScreen(
                         viewModel = viewModel,
                         onNavigateBack = { appNavController.popBackStack() },
-                        onSuccess = { 
-                            appNavController.popBackStack()
-                        }
+                        onSuccess = { appNavController.popBackStack() }
                     )
                 }
 
@@ -486,8 +559,9 @@ private fun AppShell(
                     route = "editeur_edit/{editeurId}",
                     arguments = listOf(navArgument("editeurId") { type = NavType.IntType })
                 ) { backStackEntry ->
-                    val editeurId = backStackEntry.arguments?.getInt("editeurId") ?: return@composable
-                    val viewModelBase: EditeurFormViewModel = viewModel(
+                    val editeurId =
+                        backStackEntry.arguments?.getInt("editeurId") ?: return@composable
+                    val viewModel: EditeurFormViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
                             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                                 @Suppress("UNCHECKED_CAST")
@@ -499,20 +573,15 @@ private fun AppShell(
                             }
                         }
                     )
-                    
-                    LaunchedEffect(editeurId) {
-                        viewModelBase.loadEditeur(editeurId)
-                    }
-
+                    LaunchedEffect(editeurId) { viewModel.loadEditeur(editeurId) }
                     EditeurFormScreen(
-                        viewModel = viewModelBase,
+                        viewModel = viewModel,
                         onNavigateBack = { appNavController.popBackStack() },
-                        onSuccess = { 
-                            appNavController.popBackStack()
-                        }
+                        onSuccess = { appNavController.popBackStack() }
                     )
                 }
 
+                // ── Festivals (création / édition) ──────────────────────
                 composable("festival_create") {
                     val viewModel: FestivalFormViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
@@ -529,9 +598,7 @@ private fun AppShell(
                     FestivalFormScreen(
                         viewModel = viewModel,
                         onNavigateBack = { appNavController.popBackStack() },
-                        onSuccess = { 
-                            appNavController.popBackStack()
-                        }
+                        onSuccess = { appNavController.popBackStack() }
                     )
                 }
 
@@ -552,25 +619,21 @@ private fun AppShell(
                             }
                         }
                     )
-                    
-                    LaunchedEffect(festivalId) {
-                        viewModel.loadFestival(festivalId)
-                    }
-
+                    LaunchedEffect(festivalId) { viewModel.loadFestival(festivalId) }
                     FestivalFormScreen(
                         viewModel = viewModel,
                         onNavigateBack = { appNavController.popBackStack() },
-                        onSuccess = { 
-                            appNavController.popBackStack()
-                        }
+                        onSuccess = { appNavController.popBackStack() }
                     )
                 }
 
+                // ── Gestion utilisateurs ────────────────────────────────
                 composable("users-management") {
                     val vm: UsersManagementViewModel = viewModel()
                     UsersAdminScreen(viewModel = vm)
                 }
 
+                // ── Jeux ────────────────────────────────────────────────
                 composable("jeux") {
                     val viewModel: GameListViewModel = viewModel(
                         factory = object : ViewModelProvider.Factory {
@@ -619,11 +682,7 @@ private fun AppShell(
                             }
                         }
                     )
-                    
-                    LaunchedEffect(gameId) {
-                        viewModel.loadGameById(gameId)
-                    }
-
+                    LaunchedEffect(gameId) { viewModel.loadGameById(gameId) }
                     GameFormScreen(
                         viewModel = viewModel,
                         onNavigateBack = { appNavController.popBackStack() },
@@ -631,6 +690,7 @@ private fun AppShell(
                     )
                 }
 
+                // ── Mon compte ──────────────────────────────────────────
                 composable("mon-compte") {
                     MonCompteScreen(
                         user = currentUser,

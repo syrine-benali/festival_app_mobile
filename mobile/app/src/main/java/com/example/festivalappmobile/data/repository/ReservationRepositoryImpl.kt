@@ -11,8 +11,10 @@ import com.example.festivalappmobile.data.remote.dto.*
 import com.example.festivalappmobile.data.remote.mapper.toDomain
 import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.repository.ReservationRepository
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 class ReservationRepositoryImpl(
@@ -36,9 +38,11 @@ class ReservationRepositoryImpl(
 
     // Retourne le Flow Room (offline), et tente un refresh en arrière-plan si online
     override fun getReservations(festivalId: Int?): Flow<List<ReservationSummary>> {
-        // Lance le refresh sans bloquer
+        // Lance le refresh sans bloquer - utilise coroutineScope pour ne pas bloquer le flow
         if (isOnline()) {
-            // refresh asynchrone — le flow Room émettra automatiquement après insertion
+            android.util.Log.d("ReservationRepo", "getReservations: triggering async refresh for festivalId=$festivalId")
+            // Lance le refresh en arrière-plan (fire-and-forget)
+            refreshReservationsAsync(festivalId)
         }
         val flow = if (festivalId != null)
             dao.getByFestival(festivalId)
@@ -47,13 +51,30 @@ class ReservationRepositoryImpl(
         return flow.map { list -> list.map { it.toDomain() } }
     }
 
+    // Helper pour lancer le refresh de manière asynchrone sans bloquer
+    private fun refreshReservationsAsync(festivalId: Int?) {
+        kotlinx.coroutines.GlobalScope.launch {
+            refreshReservations(festivalId)
+        }
+    }
+
     // Refresh explicite appelé depuis le ViewModel
-    suspend fun refreshReservations(festivalId: Int? = null) {
-        if (!isOnline()) return
+    override suspend fun refreshReservations(festivalId: Int?) {
+        if (!isOnline()) {
+            android.util.Log.d("ReservationRepo", "refreshReservations: offline, skip")
+            return
+        }
         try {
+            android.util.Log.d("ReservationRepo", "refreshReservations: calling API for festivalId=$festivalId")
             val response = api.getReservations(festivalId)
+            android.util.Log.d("ReservationRepo", "API response: ${response.code()}")
+            
             if (response.isSuccessful) {
-                val list = response.body()?.data?.map { it.toDomain().toEntity() } ?: emptyList()
+                val rawList = response.body()?.data ?: emptyList()
+                android.util.Log.d("ReservationRepo", "API returned ${rawList.size} reservations")
+                
+                val list = rawList.map { it.toDomain().toEntity() }
+                android.util.Log.d("ReservationRepo", "Mapped to ${list.size} entities")
 
                 // Nettoyer les réservations supprimées côté serveur mais encore présentes en cache.
                 val remoteIds = list.map { it.id }.toSet()
@@ -67,8 +88,13 @@ class ReservationRepositoryImpl(
                     .forEach { staleId -> dao.deleteById(staleId) }
 
                 dao.insertAll(list)
+                android.util.Log.d("ReservationRepo", "Inserted ${list.size} reservations into DB")
+            } else {
+                android.util.Log.w("ReservationRepo", "API error: ${response.code()} - ${response.errorBody()?.string()}")
             }
-        } catch (_: Exception) { /* silencieux : on garde le cache */ }
+        } catch (e: Exception) {
+            android.util.Log.e("ReservationRepo", "Exception in refreshReservations", e)
+        }
     }
 
     override suspend fun getReservationById(id: Int): Result<Reservation> {

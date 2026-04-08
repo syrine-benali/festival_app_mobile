@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,16 +25,22 @@ import com.example.festivalappmobile.ui.viewmodels.DashboardViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Version publique du tableau de bord — accessible sans connexion.
+ * Affiche la liste des festivals avec un bouton retour vers la page d'accueil.
+ * Pas de barre de navigation latérale, pas d'accès aux autres modules.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(
+fun PublicDashboardScreen(
     viewModel: DashboardViewModel,
-    onFestivalClick: (Int) -> Unit
+    onFestivalClick: (Int) -> Unit,
+    onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
 
-    // Rafraîchissement automatique au retour en foreground (ON_RESUME)
+    // Rafraîchissement au retour en foreground
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.loadFestivals()
     }
@@ -43,9 +49,18 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Tableau de bord") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Retour"
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -64,7 +79,7 @@ fun DashboardScreen(
                 OfflineBanner()
             }
 
-            // ── Contenu principal ───────────────────────────────────────
+            // ── Contenu ─────────────────────────────────────────────────
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -119,7 +134,7 @@ fun DashboardScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 items(festivals) { festival ->
-                                    FestivalDashboardCard(
+                                    PublicFestivalCard(
                                         festival = festival,
                                         onClick = { onFestivalClick(festival.id) }
                                     )
@@ -133,40 +148,8 @@ fun DashboardScreen(
     }
 }
 
-/**
- * Bandeau affiché en haut de l'écran quand l'appareil est hors ligne.
- * Les données affichées proviennent du cache Room.
- */
 @Composable
-fun OfflineBanner() {
-    Surface(
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.WifiOff,
-                contentDescription = "Hors ligne",
-                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = "Mode hors ligne · Données depuis le cache",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-private fun FestivalDashboardCard(
+private fun PublicFestivalCard(
     festival: Festival,
     onClick: () -> Unit
 ) {
@@ -201,10 +184,7 @@ private fun FestivalDashboardCard(
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = festival.lieu,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(text = festival.lieu, style = MaterialTheme.typography.bodyMedium)
             }
 
             Row(
@@ -222,33 +202,49 @@ private fun FestivalDashboardCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH)
                 val dateDebut = try {
-                    SimpleDateFormat("yyyy-MM-dd", Locale.FRENCH).parse(festival.dateDebut)?.let {
-                        dateFormat.format(it)
-                    } ?: festival.dateDebut
-                } catch (e: Exception) {
-                    festival.dateDebut
-                }
+                    SimpleDateFormat("yyyy-MM-dd", Locale.FRENCH).parse(festival.dateDebut)
+                        ?.let { dateFormat.format(it) } ?: festival.dateDebut
+                } catch (e: Exception) { festival.dateDebut }
                 val dateFin = try {
-                    SimpleDateFormat("yyyy-MM-dd", Locale.FRENCH).parse(festival.dateFin)?.let {
-                        dateFormat.format(it)
-                    } ?: festival.dateFin
-                } catch (e: Exception) {
-                    festival.dateFin
-                }
+                    SimpleDateFormat("yyyy-MM-dd", Locale.FRENCH).parse(festival.dateFin)
+                        ?.let { dateFormat.format(it) } ?: festival.dateFin
+                } catch (e: Exception) { festival.dateFin }
                 Text(
-                    text = "$dateDebut - $dateFin",
+                    text = "$dateDebut – $dateFin",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
 
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            Divider(modifier = Modifier.padding(vertical = 10.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                DashboardInfoItem(label = "Tables", value = festival.nbTotalTable.toString())
-                DashboardInfoItem(label = "Chaises", value = festival.nbTotalChaise.toString())
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Tables",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = festival.nbTotalTable.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Chaises",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = festival.nbTotalChaise.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Text(
@@ -258,21 +254,5 @@ private fun FestivalDashboardCard(
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
-    }
-}
-
-@Composable
-private fun DashboardInfoItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
-        )
     }
 }

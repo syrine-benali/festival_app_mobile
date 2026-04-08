@@ -8,6 +8,9 @@ interface ReservationRepository {
     // Liste (Flow pour réactivité + offline)
     fun getReservations(festivalId: Int? = null): Flow<List<ReservationSummary>>
 
+    // Rafraîchir les réservations depuis l'API
+    suspend fun refreshReservations(festivalId: Int? = null)
+
     // Détail
     suspend fun getReservationById(id: Int): Result<Reservation>
 
