@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.festivalappmobile.data.local.AppDatabase
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.remote.dto.AddZoneTarifaireRequestDto
+import com.example.festivalappmobile.data.repository.GameRepositoryImpl
 import com.example.festivalappmobile.data.repository.ReservationRepositoryImpl
 import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.usecases.reservation.*
@@ -18,6 +19,8 @@ data class ReservationDetailUiState(
     val reservation: Reservation? = null,
     val isLoading: Boolean = true,
     val isDeleting: Boolean = false,
+    val isGamesLoading: Boolean = false,
+    val editorGames: List<Game> = emptyList(),
     val isOffline: Boolean = false,
     val totalToPay: Double? = null,
     val deleted: Boolean = false,
@@ -39,6 +42,7 @@ class ReservationDetailViewModel(
     private val updateWorkflow = UpdateWorkflowUseCase(repo)
     private val addContact = AddContactUseCase(repo)
     private val addJeu = AddJeuUseCase(repo)
+    private val gameRepo = GameRepositoryImpl(RetrofitClient.instance)
 
     private val _uiState = MutableStateFlow(ReservationDetailUiState())
     val uiState: StateFlow<ReservationDetailUiState> = _uiState.asStateFlow()
@@ -57,6 +61,7 @@ class ReservationDetailViewModel(
                             isOffline = !repo.isOnline()
                         )
                     }
+                    loadEditorGames(res.editeurId)
                     calculatePrice()
                 }
                 .onFailure { e ->
@@ -319,6 +324,34 @@ class ReservationDetailViewModel(
     }
 
     fun clearMessages() = _uiState.update { it.copy(error = null, successMessage = null) }
+
+    private fun loadEditorGames(editeurId: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isGamesLoading = true) }
+            try {
+                gameRepo.getGamesByEditeur(editeurId)
+                    .onSuccess { games ->
+                        val filtered = games
+                            .sortedBy {
+                                runCatching { it.libelle }
+                                    .getOrDefault("")
+                                    .lowercase()
+                            }
+                        _uiState.update {
+                            it.copy(
+                                editorGames = filtered,
+                                isGamesLoading = false
+                            )
+                        }
+                    }
+                    .onFailure {
+                        _uiState.update { it.copy(editorGames = emptyList(), isGamesLoading = false) }
+                    }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(editorGames = emptyList(), isGamesLoading = false) }
+            }
+        }
+    }
 
     companion object {
         fun factory(context: Context, reservationId: Int): ViewModelProvider.Factory =

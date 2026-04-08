@@ -25,6 +25,20 @@ class GameRepositoryImpl(private val apiService: ApiService) : GameRepository {
         }
     }
 
+    override suspend fun getGamesByEditeur(editeurId: Int): Result<List<Game>> {
+        return try {
+            val response = apiService.getGamesByEditeur(editeurId)
+            if (response.isSuccessful) {
+                val games = response.body()?.jeux?.map { it.toDomain() } ?: emptyList()
+                Result.success(games)
+            } else {
+                Result.failure(Exception("Failed to fetch editor games: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getGameById(id: Int): Result<Game> {
         return try {
             val response = apiService.getAllGames()

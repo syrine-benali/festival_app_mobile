@@ -583,9 +583,12 @@ fun ReservationDetailScreen(
     }
 
     if (showJeuDialog) {
-        var jeuId by remember { mutableStateOf("") }
+        var selectedJeuId by remember { mutableStateOf<Int?>(null) }
         var nbExemplaires by remember { mutableStateOf("1") }
         var nbTablesAllouees by remember { mutableStateOf("1") }
+        var showJeuPicker by remember { mutableStateOf(false) }
+
+        val selectedGame = uiState.editorGames.firstOrNull { it.id == selectedJeuId }
 
         AlertDialog(
             onDismissRequest = { showJeuDialog = false },
@@ -593,11 +596,29 @@ fun ReservationDetailScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = jeuId,
-                        onValueChange = { jeuId = it },
-                        label = { Text("ID jeu") },
-                        modifier = Modifier.fillMaxWidth()
+                        value = selectedGame?.let { safeGameLabel(it) } ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Jeu de l'éditeur") },
+                        placeholder = {
+                            Text(
+                                when {
+                                    uiState.isGamesLoading -> "Chargement des jeux..."
+                                    uiState.editorGames.isEmpty() -> "Aucun jeu pour cet éditeur"
+                                    else -> "Choisir un jeu"
+                                }
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isGamesLoading && uiState.editorGames.isNotEmpty()
                     )
+                    Button(
+                        onClick = { showJeuPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isGamesLoading && uiState.editorGames.isNotEmpty()
+                    ) {
+                        Text("Choisir un jeu")
+                    }
                     OutlinedTextField(
                         value = nbExemplaires,
                         onValueChange = { nbExemplaires = it },
@@ -615,7 +636,7 @@ fun ReservationDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val parsedJeuId = jeuId.toIntOrNull()
+                        val parsedJeuId = selectedJeuId
                         val parsedNbExemplaires = nbExemplaires.toIntOrNull()
                         val parsedNbTables = nbTablesAllouees.toIntOrNull()
                         if (parsedJeuId != null && parsedNbExemplaires != null && parsedNbTables != null) {
@@ -628,7 +649,7 @@ fun ReservationDetailScreen(
                             showJeuDialog = false
                         }
                     },
-                    enabled = jeuId.toIntOrNull() != null &&
+                    enabled = selectedJeuId != null &&
                         nbExemplaires.toIntOrNull() != null &&
                         nbTablesAllouees.toIntOrNull() != null
                 ) {
@@ -639,6 +660,34 @@ fun ReservationDetailScreen(
                 TextButton(onClick = { showJeuDialog = false }) { Text("Annuler") }
             }
         )
+
+        if (showJeuPicker) {
+            AlertDialog(
+                onDismissRequest = { showJeuPicker = false },
+                title = { Text("Choisir un jeu") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        uiState.editorGames.forEach { game ->
+                            TextButton(
+                                onClick = {
+                                    selectedJeuId = game.id
+                                    showJeuPicker = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(safeGameLabel(game))
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showJeuPicker = false }) {
+                        Text("Fermer")
+                    }
+                }
+            )
+        }
     }
 
     editingJeu?.let { jeu ->
@@ -842,6 +891,12 @@ private fun CheckboxRow(label: String, checked: Boolean, onCheckedChange: (Boole
 private fun normalizeDateString(rawDate: String?): String {
     if (rawDate.isNullOrBlank()) return ""
     return if (rawDate.length >= 10) rawDate.substring(0, 10) else rawDate
+}
+
+private fun safeGameLabel(game: com.example.festivalappmobile.domain.models.Game): String {
+    return runCatching { game.libelle }
+        .getOrDefault("")
+        .ifBlank { "Jeu sans nom" }
 }
 
 private data class HardcodedPricingClass(
