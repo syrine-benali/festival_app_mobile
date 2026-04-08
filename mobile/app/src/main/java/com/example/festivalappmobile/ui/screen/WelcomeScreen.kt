@@ -38,7 +38,7 @@ fun WelcomeScreen(
         ) {
             // ── Titre ──────────────────────────────────────────────────
             Text(
-                text = "🎲",
+                text = "🎲", //TODO : mettre un bon logo au futur mais pas grave on garde celui ci 
                 style = MaterialTheme.typography.displayLarge
             )
             Text(
@@ -131,7 +131,7 @@ fun WelcomeScreen(
             }
 
             Text(
-                text = "Accès en lecture seule · Données depuis le cache si hors ligne",
+                text = "Clique c'est magique ",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
