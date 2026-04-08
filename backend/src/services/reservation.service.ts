@@ -449,7 +449,14 @@ export class ReservationService {
   async addReservationJeu(reservationId: number, data: AddReservationJeuRequest) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
-      include: { reservationLines: true, reservationJeux: true },
+      include: {
+        reservationLines: true,
+        reservationJeux: {
+          include: {
+            zonePlan: true,
+          },
+        },
+      },
     });
     if (!reservation) {
       throw new NotFoundError(`Réservation avec l'ID ${reservationId} non trouvée`);
@@ -482,7 +489,7 @@ export class ReservationService {
       );
     }
 
-    // Si une zone du plan est spécifiée, vérifier qu'elle correspond à une zone tarifaire réservée
+    // Si une zone du plan est spécifiée, vérifier les cohérences de zone et capacités allouées
     if (data.zonePlanId) {
       const zonePlan = await this.prisma.zonePlan.findUnique({
         where: { id: data.zonePlanId },
@@ -499,6 +506,30 @@ export class ReservationService {
         if (!hasZoneTarifaire) {
           throw new BadRequestError(
             'La zone du plan doit correspondre à une zone tarifaire réservée'
+          );
+        }
+
+        const tablesReserveesDansZoneTarifaire = reservation.reservationLines
+          .filter((line) => line.zoneTarifaireId === zonePlan.zoneTarifaireId)
+          .reduce((sum, line) => sum + line.nbTables, 0);
+
+        const tablesAlloueesDansZoneTarifaire = reservation.reservationJeux
+          .filter((jeu) => jeu.zonePlan?.zoneTarifaireId === zonePlan.zoneTarifaireId)
+          .reduce((sum, jeu) => sum + jeu.nbTablesAllouees, 0);
+
+        if (tablesAlloueesDansZoneTarifaire + data.nbTablesAllouees > tablesReserveesDansZoneTarifaire) {
+          throw new BadRequestError(
+            `Dépassement du nombre de tables réservées dans cette zone tarifaire (${tablesReserveesDansZoneTarifaire})`
+          );
+        }
+
+        const tablesAlloueesDansZonePlan = reservation.reservationJeux
+          .filter((jeu) => jeu.zonePlanId === zonePlan.id)
+          .reduce((sum, jeu) => sum + jeu.nbTablesAllouees, 0);
+
+        if (tablesAlloueesDansZonePlan + data.nbTablesAllouees > tablesReserveesDansZoneTarifaire) {
+          throw new BadRequestError(
+            `Dépassement des tables possibles dans la zone du plan (${tablesReserveesDansZoneTarifaire} max selon la zone tarifaire réservée)`
           );
         }
       }
@@ -529,8 +560,16 @@ export class ReservationService {
     const existing = await this.prisma.reservationJeu.findUnique({
       where: { id: jeuId },
       include: {
+        zonePlan: true,
         reservation: {
-          include: { reservationLines: true, reservationJeux: true },
+          include: {
+            reservationLines: true,
+            reservationJeux: {
+              include: {
+                zonePlan: true,
+              },
+            },
+          },
         },
       },
     });
@@ -563,13 +602,14 @@ export class ReservationService {
       }
     }
 
-    // Vérifier la zone du plan si changée
-    if (data.zonePlanId) {
+    // Vérifier la zone du plan et les capacités allouées
+    const zonePlanCibleId = data.zonePlanId ?? existing.zonePlanId;
+    if (zonePlanCibleId) {
       const zonePlan = await this.prisma.zonePlan.findUnique({
-        where: { id: data.zonePlanId },
+        where: { id: zonePlanCibleId },
       });
       if (!zonePlan) {
-        throw new NotFoundError(`Zone du plan avec l'ID ${data.zonePlanId} non trouvée`);
+        throw new NotFoundError(`Zone du plan avec l'ID ${zonePlanCibleId} non trouvée`);
       }
 
       // Seulement vérifier si des lignes de réservation existent
@@ -580,6 +620,32 @@ export class ReservationService {
         if (!hasZoneTarifaire) {
           throw new BadRequestError(
             'La zone du plan doit correspondre à une zone tarifaire réservée'
+          );
+        }
+
+        const tablesReserveesDansZoneTarifaire = existing.reservation.reservationLines
+          .filter((line) => line.zoneTarifaireId === zonePlan.zoneTarifaireId)
+          .reduce((sum, line) => sum + line.nbTables, 0);
+
+        const tablesAlloueesDansZoneTarifaire = existing.reservation.reservationJeux
+          .filter((jeu) => jeu.id !== jeuId)
+          .filter((jeu) => jeu.zonePlan?.zoneTarifaireId === zonePlan.zoneTarifaireId)
+          .reduce((sum, jeu) => sum + jeu.nbTablesAllouees, 0);
+
+        if (tablesAlloueesDansZoneTarifaire + nbTablesAllouees > tablesReserveesDansZoneTarifaire) {
+          throw new BadRequestError(
+            `Dépassement du nombre de tables réservées dans cette zone tarifaire (${tablesReserveesDansZoneTarifaire})`
+          );
+        }
+
+        const tablesAlloueesDansZonePlan = existing.reservation.reservationJeux
+          .filter((jeu) => jeu.id !== jeuId)
+          .filter((jeu) => jeu.zonePlanId === zonePlan.id)
+          .reduce((sum, jeu) => sum + jeu.nbTablesAllouees, 0);
+
+        if (tablesAlloueesDansZonePlan + nbTablesAllouees > tablesReserveesDansZoneTarifaire) {
+          throw new BadRequestError(
+            `Dépassement des tables possibles dans la zone du plan (${tablesReserveesDansZoneTarifaire} max selon la zone tarifaire réservée)`
           );
         }
       }
