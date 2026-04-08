@@ -146,17 +146,4 @@ interface ApiService {
 
     @DELETE("api/editeurs/{id}")
     suspend fun deleteEditeur(@Path("id") id: Int): Response<EditeurDeleteResponseDto>
-
-    // ===== JEUX =====
-    @GET("api/jeux")
-    suspend fun getAllGames(): Response<GameListResponseDto>
-
-    @POST("api/jeux")
-    suspend fun createGame(@Body body: GameCreateRequestDto): Response<GameResponseDto>
-
-    @PUT("api/jeux/{id}")
-    suspend fun updateGame(@Path("id") id: Int, @Body body: GameUpdateRequestDto): Response<GameResponseDto>
-
-    @DELETE("api/jeux/{id}")
-    suspend fun deleteGame(@Path("id") id: Int): Response<Unit>
 }
