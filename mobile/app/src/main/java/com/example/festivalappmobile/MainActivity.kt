@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.TableRestaurant
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,16 +51,20 @@ import com.example.festivalappmobile.data.local.TokenManager
 import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
+import com.example.festivalappmobile.data.repository.GameRepositoryImpl
 import com.example.festivalappmobile.domain.usecases.editeur.CreateEditeurUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.GetEditeurByIdUseCase
 import com.example.festivalappmobile.domain.usecases.editeur.UpdateEditeurUseCase
 import com.example.festivalappmobile.domain.usecases.festival.CreateFestivalUseCase
 import com.example.festivalappmobile.domain.usecases.festival.GetFestivalByIdUseCase
 import com.example.festivalappmobile.domain.usecases.festival.UpdateFestivalUseCase
+import com.example.festivalappmobile.domain.usecases.game.DeleteGameUseCase
+import com.example.festivalappmobile.domain.usecases.game.GetAllGamesUseCase
 import com.example.festivalappmobile.domain.models.User
 import com.example.festivalappmobile.ui.screen.EditeurListScreen
 import com.example.festivalappmobile.ui.screen.FestivalListScreen
 import com.example.festivalappmobile.ui.screen.LoginScreen
+import com.example.festivalappmobile.ui.screen.GameListScreen
 import com.example.festivalappmobile.ui.screen.MonCompteScreen
 import com.example.festivalappmobile.ui.screen.RegisterScreen
 import com.example.festivalappmobile.ui.screen.ReservationDetailScreen
@@ -69,11 +74,14 @@ import com.example.festivalappmobile.ui.screen.details.EditeurDetailScreen
 import com.example.festivalappmobile.ui.screen.details.FestivalDetailScreen
 import com.example.festivalappmobile.ui.screen.forms.EditeurFormScreen
 import com.example.festivalappmobile.ui.screen.forms.FestivalFormScreen
+import com.example.festivalappmobile.ui.screen.forms.GameFormScreen
 import com.example.festivalappmobile.ui.theme.FestivalAppMobileTheme
 import com.example.festivalappmobile.ui.viewmodels.EditeurFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.EditeurListViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalFormViewModel
 import com.example.festivalappmobile.ui.viewmodels.FestivalListViewModel
+import com.example.festivalappmobile.ui.viewmodels.GameFormViewModel
+import com.example.festivalappmobile.ui.viewmodels.GameListViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationDetailViewModel
 import com.example.festivalappmobile.ui.viewmodels.ReservationListViewModel
 import com.example.festivalappmobile.ui.viewmodels.UsersManagementViewModel
@@ -170,6 +178,7 @@ private fun AppShell(
         listOf(
             AppTab(route = "festivals", label = "Festivals", icon = Icons.Default.Event),
             AppTab(route = "editeurs", label = "Editeurs", icon = Icons.Default.Business),
+            AppTab(route = "jeux", label = "Jeux", icon = Icons.Default.VideogameAsset),
             AppTab(route = "reservations", label = "Reservations", icon = Icons.Default.TableRestaurant),
             AppTab(route = "users-management", label = "Users", icon = Icons.Default.Groups),
             AppTab(route = "mon-compte", label = "Mon compte", icon = Icons.Default.AccountCircle)
@@ -181,7 +190,7 @@ private fun AppShell(
     LaunchedEffect(currentRoute) {
         when {
             currentRoute == "reservation/{id}" -> isSidebarExpanded = false
-            currentRoute in setOf("festivals", "editeurs", "reservations", "mon-compte", "users-management") -> {
+            currentRoute in setOf("festivals", "editeurs", "jeux", "reservations", "mon-compte", "users-management") -> {
                 if (screenWidth >= 600) {
                     isSidebarExpanded = true
                 }
@@ -201,6 +210,11 @@ private fun AppShell(
     val editeurRepository = remember {
         val api = RetrofitClient.instance
         EditeurRepositoryImpl(api)
+    }
+
+    val gameRepository = remember {
+        val api = RetrofitClient.instance
+        GameRepositoryImpl(api)
     }
 
     Row(
@@ -499,6 +513,66 @@ private fun AppShell(
                 composable("users-management") {
                     val vm: UsersManagementViewModel = viewModel()
                     UsersAdminScreen(viewModel = vm)
+                }
+
+                composable("jeux") {
+                    val viewModel: GameListViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return GameListViewModel(
+                                    GetAllGamesUseCase(gameRepository),
+                                    DeleteGameUseCase(gameRepository)
+                                ) as T
+                            }
+                        }
+                    )
+                    GameListScreen(
+                        viewModel = viewModel,
+                        onAddClick = { appNavController.navigate("game_create") },
+                        onGameClick = { game -> appNavController.navigate("game_edit/${game.id}") }
+                    )
+                }
+
+                composable("game_create") {
+                    val viewModel: GameFormViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return GameFormViewModel(gameRepository, editeurRepository) as T
+                            }
+                        }
+                    )
+                    GameFormScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onSuccess = { appNavController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = "game_edit/{gameId}",
+                    arguments = listOf(navArgument("gameId") { type = NavType.IntType })
+                ) { backStackEntry ->
+                    val gameId = backStackEntry.arguments?.getInt("gameId") ?: 0
+                    val viewModel: GameFormViewModel = viewModel(
+                        factory = object : ViewModelProvider.Factory {
+                            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                                @Suppress("UNCHECKED_CAST")
+                                return GameFormViewModel(gameRepository, editeurRepository) as T
+                            }
+                        }
+                    )
+                    
+                    LaunchedEffect(gameId) {
+                        viewModel.loadGameById(gameId)
+                    }
+
+                    GameFormScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { appNavController.popBackStack() },
+                        onSuccess = { appNavController.popBackStack() }
+                    )
                 }
 
                 composable("mon-compte") {
