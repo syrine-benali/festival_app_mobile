@@ -9,6 +9,7 @@ import com.example.festivalappmobile.data.remote.RetrofitClient
 import com.example.festivalappmobile.data.repository.EditeurRepositoryImpl
 import com.example.festivalappmobile.data.repository.FestivalRepositoryImpl
 import com.example.festivalappmobile.data.repository.ReservationRepositoryImpl
+import com.example.festivalappmobile.utils.NetworkMonitor
 import com.example.festivalappmobile.domain.models.Editeur
 import com.example.festivalappmobile.domain.models.Festival
 import com.example.festivalappmobile.domain.models.ReservationSummary
@@ -38,13 +39,17 @@ class ReservationListViewModel(
     private val festivalId: Int? = null
 ) : ViewModel() {
 
+    private val networkMonitor = NetworkMonitor(context.applicationContext)
+    private val db = AppDatabase.getInstance(context)
+    private val api = RetrofitClient.instance
+
     private val repo = ReservationRepositoryImpl(
-        api = RetrofitClient.instance,
-        db = AppDatabase.getInstance(context),
-        context = context.applicationContext  // ← plus de TODO
+        api = api,
+        db = db,
+        context = context.applicationContext
     )
-    private val editeurRepo = EditeurRepositoryImpl(RetrofitClient.instance)
-    private val festivalRepo = FestivalRepositoryImpl(RetrofitClient.instance)
+    private val editeurRepo = EditeurRepositoryImpl(api, db.editeurDao(), networkMonitor)
+    private val festivalRepo = FestivalRepositoryImpl(api, db.festivalDao(), networkMonitor)
     private val getReservations = GetReservationsUseCase(repo)
     private var reservationsJob: Job? = null
 

@@ -12,6 +12,9 @@ import com.example.festivalappmobile.data.remote.mapper.toDomain
 import com.example.festivalappmobile.domain.models.*
 import com.example.festivalappmobile.domain.repository.ReservationRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
 
@@ -34,26 +37,61 @@ class ReservationRepositoryImpl(
         }
     }
 
-    // Retourne le Flow Room (offline), et tente un refresh en arrière-plan si online
-    override fun getReservations(festivalId: Int?): Flow<List<ReservationSummary>> {
-        // Lance le refresh sans bloquer
-        if (isOnline()) {
-            // refresh asynchrone — le flow Room émettra automatiquement après insertion
-        }
-        val flow = if (festivalId != null)
+    // Retourne le Flow Room (offline-first) + refresh si online et cache vide
+    override fun getReservations(festivalId: Int?): Flow<List<ReservationSummary>> = flow {
+        android.util.Log.d("ReservationRepo", "getReservations called for festivalId=$festivalId, isOnline=${isOnline()}")
+        
+        val cacheFlow = if (festivalId != null)
             dao.getByFestival(festivalId)
         else
             dao.getAll()
-        return flow.map { list -> list.map { it.toDomain() } }
+        
+        // ── 1. Émettre UNE FOIS depuis le cache (pas une boucle infinie!) ──
+        val firstCacheValue = cacheFlow.first().map { it.toDomain() }
+        android.util.Log.d("ReservationRepo", "First cache emission: ${firstCacheValue.size} items")
+        emit(firstCacheValue)
+        
+        // ── 2. Si online ET cache vide, faire un refresh bloquant ──
+        if (isOnline() && firstCacheValue.isEmpty()) {
+            android.util.Log.d("ReservationRepo", "Cache empty and online → doing refresh")
+            try {
+                refreshReservations(festivalId)
+                // Après refresh, émettre la version mise à jour du cache
+                val refreshedValue = cacheFlow.first().map { it.toDomain() }
+                android.util.Log.d("ReservationRepo", "After refresh: ${refreshedValue.size} items")
+                if (refreshedValue != firstCacheValue) {
+                    emit(refreshedValue)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ReservationRepo", "Error during refresh", e)
+            }
+        }
     }
 
     // Refresh explicite appelé depuis le ViewModel
-    suspend fun refreshReservations(festivalId: Int? = null) {
-        if (!isOnline()) return
+    override suspend fun refreshReservations(festivalId: Int?) {
+        if (!isOnline()) {
+            android.util.Log.d("ReservationRepo", "refreshReservations: offline, skip")
+            return
+        }
         try {
+            android.util.Log.d("ReservationRepo", "refreshReservations: calling API for festivalId=$festivalId")
             val response = api.getReservations(festivalId)
+            android.util.Log.d("ReservationRepo", "API response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+            
             if (response.isSuccessful) {
-                val list = response.body()?.data?.map { it.toDomain().toEntity() } ?: emptyList()
+                val body = response.body()
+                android.util.Log.d("ReservationRepo", "API response body: $body")
+                
+                val rawList = body?.data ?: emptyList()
+                android.util.Log.d("ReservationRepo", "API returned ${rawList.size} reservations")
+                
+                if (rawList.isEmpty()) {
+                    android.util.Log.w("ReservationRepo", "⚠️ API returned 0 reservations for festivalId=$festivalId")
+                }
+                
+                val list = rawList.map { it.toDomain().toEntity() }
+                android.util.Log.d("ReservationRepo", "Mapped to ${list.size} entities")
 
                 // Nettoyer les réservations supprimées côté serveur mais encore présentes en cache.
                 val remoteIds = list.map { it.id }.toSet()
@@ -67,8 +105,15 @@ class ReservationRepositoryImpl(
                     .forEach { staleId -> dao.deleteById(staleId) }
 
                 dao.insertAll(list)
+                android.util.Log.d("ReservationRepo", "Inserted ${list.size} reservations into DB")
+            } else {
+                val errorBody = response.errorBody()?.string()
+                android.util.Log.w("ReservationRepo", "API error: ${response.code()} - HTTP error body: $errorBody")
             }
-        } catch (_: Exception) { /* silencieux : on garde le cache */ }
+        } catch (e: Exception) {
+            android.util.Log.e("ReservationRepo", "Exception in refreshReservations", e)
+            e.printStackTrace()
+        }
     }
 
     override suspend fun getReservationById(id: Int): Result<Reservation> {
